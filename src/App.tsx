@@ -7,7 +7,7 @@ function App() {
     const [game, setGame] = useState(new Chess());
 
     function makeAMove(move: any) {
-        const gameCopy = { ...game };
+        const gameCopy = game;
         const result = gameCopy.move(move);
         setGame(gameCopy);
         return result; // null if the move was illegal, the move object if the move was legal
@@ -15,7 +15,7 @@ function App() {
     
       function makeRandomMove() {
         const possibleMoves = game.moves();
-        if (game.game_over() || game.in_draw() || possibleMoves.length === 0) return; // exit if the game is over
+        if (game.isGameOver() || game.isDraw() || possibleMoves.length === 0) return; // exit if the game is over
         const randomIndex = Math.floor(Math.random() * possibleMoves.length);
         makeAMove(possibleMoves[randomIndex]);
       }
