@@ -7,12 +7,12 @@ function App() {
     const [game, setGame] = useState(new Chess());
     const [fen, setFen] = useState(game.fen());
     const [msgAlert, setMsgAlert] = useState("");
-    const [boardWidth, setBoardWidth] = useState(window.innerHeight - 150);
+    const [boardWidth, setBoardWidth] = useState<number>(450);
 
     // Force a rerender if the screen dimensions change
     useEffect(() => {
         const handleResize = () => {
-            setBoardWidth(window.innerHeight - 150);
+            setBoardWidth(Math.min(400 * (window.innerWidth / 900), 700));
         };
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
