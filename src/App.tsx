@@ -6,12 +6,13 @@ import "./App.css";
 function App() {
     const [game, setGame] = useState(new Chess());
     const [fen, setFen] = useState(game.fen());
-    const [boardWidth, setBoardWidth] = useState(window.innerHeight - 100);
+    const [msgAlert, setMsgAlert] = useState("");
+    const [boardWidth, setBoardWidth] = useState(window.innerHeight - 150);
 
     // Force a rerender if the screen dimensions change
     useEffect(() => {
         const handleResize = () => {
-            setBoardWidth(window.innerHeight - 100);
+            setBoardWidth(window.innerHeight - 150);
         };
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
@@ -31,14 +32,66 @@ function App() {
         setGame(copy);
         // Trigger a re-render by updating fen state, as updating object will not trigger it
         setFen(copy.fen());
-        setBoardWidth(window.innerHeight - 100);
         return true;
     }
 
+    useEffect(() => {
+        // Handle win conditions
+        if (game.isCheckmate()) {
+            setMsgAlert("Checkmate!");
+        } else if (game.isDraw()) {
+            setMsgAlert("Draw!");
+        } else if (game.isStalemate()) {
+            setMsgAlert("Stalemate!");
+        } else if (game.isThreefoldRepetition()) {
+            setMsgAlert("Draw! Threefold Repetition!");
+        } else if (game.isInsufficientMaterial()) {
+            setMsgAlert("Draw! Insufficient Material!");
+        } else {
+            setMsgAlert("");
+        }
+    }, [fen]);
+
     return (
-        <div className="App">
-            <div id="board">
+        <div className="container">
+            <div className="board">
                 <Chessboard position={fen} onPieceDrop={onDrop} id="board" boardWidth={boardWidth} />
+            </div>
+            <div className="half">
+                <p className="info">
+                    {game.history().map((move, index) => {
+                        return (
+                            <>
+                                {index + 1}.{move}{" "}
+                            </>
+                        );
+                    })}
+                </p>
+                {/* <p className="info">It is {game.turn() === "w" ? "White" : "Black"}'s turn.</p> */}
+                <h1 className="center" id="title">
+                    Fusion Chess
+                </h1>
+                <button
+                    id="reset"
+                    onClick={() => {
+                        game.reset();
+                        setFen(game.fen());
+                    }}
+                >
+                    Reset
+                </button>
+                <button
+                    id="undo"
+                    onClick={() => {
+                        game.undo();
+                        setFen(game.fen());
+                    }}
+                >
+                    Undo
+                </button>
+                <p id="alert" className="center">
+                    {msgAlert}
+                </p>
             </div>
         </div>
     );

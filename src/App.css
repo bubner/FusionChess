@@ -1,4 +1,7 @@
-/* make some basic styles, such as dark background, center aligned elements etc */
+* {
+    font-family: 'Ubuntu', sans-serif;
+}
+
 body {
     background-color: #282c34;
     /* color: white;
@@ -14,6 +17,47 @@ body {
     -moz-osx-font-smoothing: grayscale; */
 }
 
-#board {
-    padding: 3%;
+.container {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    grid-template-rows: 1fr;
+    gap: 0px 0px;
+    grid-auto-flow: row;
+    grid-template-areas: "board half";
+}
+
+.board {
+    grid-area: board;
+    padding: 5%;
+}
+
+.half {
+    grid-area: half;
+}
+
+.half button {
+    margin: 10px;
+    padding: 24px 48px 24px 48px;
+    font-size: 24px;
+}
+
+#alert {
+    color: red;
+    font-size: 36px;
+}
+
+#title {
+    color: white;
+}
+
+.center {
+    text-align: center;
+    width: 350px;
+}
+
+.info {
+    color: white;
+    text-align: center;
+    max-width: 350px;
 }
