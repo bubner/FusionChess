@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Chess, Square } from "chess.js";
+import { Chess, Square } from "chess.js/src/chess";
 import { Chessboard } from "react-chessboard";
 import "./App.css";
 
@@ -7,12 +7,12 @@ function App() {
     const [game, setGame] = useState(new Chess());
     const [fen, setFen] = useState(game.fen());
     const [msgAlert, setMsgAlert] = useState("");
-    const [boardWidth, setBoardWidth] = useState<number>(450);
+    const [boardWidth, setBoardWidth] = useState<number>(600);
 
     // Force a rerender if the screen dimensions change
     useEffect(() => {
         const handleResize = () => {
-            setBoardWidth(Math.min(400 * (window.innerWidth / 900), 700));
+            setBoardWidth(600);
         };
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
@@ -62,18 +62,18 @@ function App() {
                     {game.history().map((move, index) => {
                         return (
                             <>
-                                {index + 1}.{move}{" "}
+                                {index % 2 == 0 ? index / 2 + 1 + "." : null}{move}{" "}
                             </>
                         );
                     })}
                 </p>
-                {/* <p className="info">It is {game.turn() === "w" ? "White" : "Black"}'s turn.</p> */}
                 <h1 className="center" id="title">
                     Fusion Chess
                 </h1>
                 <button
                     id="reset"
                     onClick={() => {
+                        if (!window.confirm("Confirm reset?")) return;
                         game.reset();
                         setFen(game.fen());
                     }}

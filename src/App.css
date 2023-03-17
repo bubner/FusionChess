@@ -23,14 +23,13 @@ body {
     grid-template-columns: auto auto;
     align-items: center;
     grid-template-rows: 1fr;
-    gap: 0px 0px;
+    gap: 0 0;
     grid-auto-flow: row;
     grid-template-areas: "board half";
 }
 
 .board {
     grid-area: board;
-    padding: 5%;
 }
 
 .half {
@@ -61,4 +60,6 @@ body {
     color: white;
     text-align: center;
     max-width: 350px;
+    max-height: 150px;
+    overflow-y: auto;
 }
