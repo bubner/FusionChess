@@ -76,6 +76,14 @@ function App() {
         return true;
     }
 
+    function onHover(square: Square) {
+        const moves = game.moves({square: square});
+        for (let i = 0; i < moves.length; i++) {
+            const square = game.get(moves[i]);
+            console.log();
+        }
+    }
+
     useEffect(() => {
         // Handle game conditions
         if (game.isCheckmate()) {
@@ -97,7 +105,7 @@ function App() {
         <div className="container">
             <img src="/cdotcom.png" id="bg" />
             <div className="board">
-                <Chessboard position={fen} onPieceDrop={onDrop} id="board" boardWidth={boardWidth} />
+                <Chessboard position={fen} onPieceDrop={onDrop} id="board" boardWidth={boardWidth} onMouseOverSquare={onHover} />
             </div>
              <div className="left">
                 <h1 className="title">
