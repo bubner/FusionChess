@@ -7,6 +7,7 @@ function App() {
     const [game, setGame] = useState(new Chess());
     const [fen, setFen] = useState(game.fen());
     const [sounds, setSounds] = useState<HTMLAudioElement[]>([]);
+    const [squareAttributes, setSquareAttributes] = useState<{ [key: string]: { backgroundColor: string } }>({});
     const [msgAlert, setMsgAlert] = useState("");
     const [boardWidth, setBoardWidth] = useState<number>(Math.min(document.documentElement.clientHeight, document.documentElement.clientWidth) - 15);
 
@@ -45,6 +46,11 @@ function App() {
         setFen(fen);
     }
 
+    // Get the square from a move position, extracting the last two characters for a board position
+    function getPosition(square: string) {
+        return square.slice(-2);
+    }
+
     function onDrop(sourceSquare: Square, targetSquare: Square) {
         // Don't move if the game is over
         if (game.isGameOver()) return false;
@@ -77,10 +83,31 @@ function App() {
     }
 
     function onHover(square: Square) {
+        onHoverLeave(square);
+        const moves = game.moves({square: square});
+        let edits = {};
+        for (let i = 0; i < moves.length; i++) {
+            // Assign edits to a variable to avoid re-rendering for each move
+            edits = {
+                ...edits,
+                [getPosition(moves[i])]: {
+                    backgroundColor: "rgba(255, 0, 0, 0.5)",
+                },
+            };
+        }
+        // Highlight squares by updating the styles board state
+        setSquareAttributes(edits);
+    }
+
+    function onHoverLeave(square: Square) {
         const moves = game.moves({square: square});
         for (let i = 0; i < moves.length; i++) {
-            const square = game.get(moves[i]);
-            console.log();
+            // Remove highlighting by updating the styles board state
+            setSquareAttributes({
+                [getPosition(moves[i])]: {
+                    backgroundColor: "revert",
+                },
+            });
         }
     }
 
@@ -105,7 +132,7 @@ function App() {
         <div className="container">
             <img src="/cdotcom.png" id="bg" />
             <div className="board">
-                <Chessboard position={fen} onPieceDrop={onDrop} id="board" boardWidth={boardWidth} onMouseOverSquare={onHover} />
+                <Chessboard position={fen} onPieceDrop={onDrop} id="board" boardWidth={boardWidth} onMouseOverSquare={onHover} onMouseOutSquare={onHoverLeave} customSquareStyles={squareAttributes} />
             </div>
              <div className="left">
                 <h1 className="title">
