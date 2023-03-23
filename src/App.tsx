@@ -48,6 +48,9 @@ function App() {
 
     // Get the square from a move position, extracting the last two characters for a board position
     function getPosition(square: string) {
+        if (square.slice(-1) == "+" || square.slice(-1) == "#") {
+            return square.slice(-3).substring(0, 2);
+        }
         return square.slice(-2);
     }
 
