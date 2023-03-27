@@ -4,8 +4,8 @@ import { Chessboard } from "react-chessboard";
 import "./App.css";
 
 function App() {
-    const [game, setGame] = useState(new Chess());
-    const [fen, setFen] = useState(game.fen());
+    const [game, setGame] = useState<Array<Chess>>([new Chess(), new Chess()]);
+    const [fen, setFen] = useState(game[0].fen());
     const [sounds, setSounds] = useState<HTMLAudioElement[]>([]);
     const [squareAttributes, setSquareAttributes] = useState<{ [key: string]: { backgroundColor: string } }>({});
     const [msgAlert, setMsgAlert] = useState("");
@@ -38,7 +38,7 @@ function App() {
         let fen = prompt("Enter FEN: ");
         if (fen == null) return;
         try {
-            game.load(fen);
+            game[0].load(fen);
         } catch (e) {
             alert("Invalid FEN!");
             return;
@@ -56,8 +56,12 @@ function App() {
 
     function onDrop(sourceSquare: Square, targetSquare: Square) {
         // Don't move if the game is over
-        if (game.isGameOver()) return false;
-        let copy = game;
+        if (game[0].isGameOver()) return false;
+        // Fusion element
+        if (game[0].get(targetSquare) != false) {
+            // Must be capturing a piece, activate fusion
+        }
+        let copy = game[0];
         try {
             const move = copy.move({
                 from: sourceSquare,
@@ -79,7 +83,7 @@ function App() {
         } catch (Error) {
             return false;
         }
-        setGame(copy);
+        setGame(copy, game[1]);
         // Trigger a re-render by updating fen state, as updating object will not trigger it
         setFen(copy.fen());
         return true;
@@ -87,7 +91,7 @@ function App() {
 
     function onHover(square: Square) {
         onHoverLeave(square);
-        const moves = game.moves({square: square});
+        const moves = game[0].moves({square: square});
         let edits = {};
         for (let i = 0; i < moves.length; i++) {
             // Assign edits to a variable to avoid re-rendering for each move
@@ -103,7 +107,7 @@ function App() {
     }
 
     function onHoverLeave(square: Square) {
-        const moves = game.moves({square: square});
+        const moves = game[0].moves({square: square});
         for (let i = 0; i < moves.length; i++) {
             // Remove highlighting by updating the styles board state
             setSquareAttributes({
@@ -116,15 +120,15 @@ function App() {
 
     useEffect(() => {
         // Handle game conditions
-        if (game.isCheckmate()) {
+        if (game[0].isCheckmate()) {
             setMsgAlert("Checkmate!");
-        } else if (game.isStalemate()) {
+        } else if (game[0].isStalemate()) {
             setMsgAlert("Draw! Stalemate!");
-        } else if (game.isThreefoldRepetition()) {
+        } else if (game[0].isThreefoldRepetition()) {
             setMsgAlert("Draw! Threefold Repetition!");
-        } else if (game.isInsufficientMaterial()) {
+        } else if (game[0].isInsufficientMaterial()) {
             setMsgAlert("Draw! Insufficient Material!");
-        } else if (game.isCheck()) {
+        } else if (game[0].isCheck()) {
             setMsgAlert("Check!");
         } else {
             setMsgAlert("");
@@ -145,8 +149,8 @@ function App() {
                     id="reset"
                     onClick={() => {
                         if (!window.confirm("Confirm reset?")) return;
-                        game.reset();
-                        setFen(game.fen());
+                        game[0].reset();
+                        setFen(game[0].fen());
                     }}
                 >
                     Reset
@@ -154,7 +158,7 @@ function App() {
                 <button
                     id="undo"
                     onClick={() => {
-                        game.undo();
+                        game[0].undo();
                         setFen(game.fen());
                     }}
                 >
@@ -174,7 +178,7 @@ function App() {
             <div className="bottom">
                 <p className="title">History</p>
                 <p className="history">
-                    {game.history().length > 0 ? game.history().map((move, index) => {
+                    {game[0].history().length > 0 ? game[0].history().map((move, index) => {
                         return (
                             <>
                                 {index % 2 === 0 ? index / 2 + 1 + "." : null}{move}{" "}
