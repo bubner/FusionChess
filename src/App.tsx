@@ -9,7 +9,9 @@ function App() {
     const [sounds, setSounds] = useState<HTMLAudioElement[]>([]);
     const [squareAttributes, setSquareAttributes] = useState<{ [key: string]: { backgroundColor: string } }>({});
     const [msgAlert, setMsgAlert] = useState("");
-    const [boardWidth, setBoardWidth] = useState<number>(Math.min(document.documentElement.clientHeight, document.documentElement.clientWidth) - 15);
+    const [boardWidth, setBoardWidth] = useState<number>(
+        Math.min(document.documentElement.clientHeight, document.documentElement.clientWidth) - 15
+    );
 
     // Get all audio files and store them in an state array
     useMemo(() => {
@@ -35,7 +37,7 @@ function App() {
     }, []);
 
     function importFen() {
-        let fen = prompt("Enter FEN: ");
+        const fen = prompt("Enter FEN: ");
         if (fen == null) return;
         try {
             game.load(fen);
@@ -57,7 +59,14 @@ function App() {
     function onDrop(sourceSquare: Square, targetSquare: Square) {
         // Don't move if the game is over
         if (game.isGameOver()) return false;
-        let copy = game;
+
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        if (game.get(targetSquare) != false) {
+            // Must be capturing a piece, activate fusion
+        }
+
+        const copy = game;
         try {
             const move = copy.move({
                 from: sourceSquare,
@@ -87,7 +96,7 @@ function App() {
 
     function onHover(square: Square) {
         onHoverLeave(square);
-        const moves = game.moves({square: square});
+        const moves = game.moves({ square: square });
         let edits = {};
         for (let i = 0; i < moves.length; i++) {
             // Assign edits to a variable to avoid re-rendering for each move
@@ -103,7 +112,7 @@ function App() {
     }
 
     function onHoverLeave(square: Square) {
-        const moves = game.moves({square: square});
+        const moves = game.moves({ square: square });
         for (let i = 0; i < moves.length; i++) {
             // Remove highlighting by updating the styles board state
             setSquareAttributes({
@@ -135,12 +144,18 @@ function App() {
         <div className="container">
             <img src="/cdotcom.png" id="bg" />
             <div className="board">
-                <Chessboard position={fen} onPieceDrop={onDrop} id="board" boardWidth={boardWidth} onMouseOverSquare={onHover} onMouseOutSquare={onHoverLeave} customSquareStyles={squareAttributes} />
+                <Chessboard
+                    position={fen}
+                    onPieceDrop={onDrop}
+                    id="board"
+                    boardWidth={boardWidth}
+                    onMouseOverSquare={onHover}
+                    onMouseOutSquare={onHoverLeave}
+                    customSquareStyles={squareAttributes}
+                />
             </div>
-             <div className="left">
-                <h1 className="title">
-                    Fusion Chess
-                </h1>
+            <div className="left">
+                <h1 className="title">Fusion Chess</h1>
                 <button
                     id="reset"
                     onClick={() => {
@@ -161,7 +176,13 @@ function App() {
                     Undo
                 </button>
                 <br />
-                <button id="copy" onClick={() => {navigator.clipboard.writeText(fen); alert(`copied fen: ${fen}`)}}>
+                <button
+                    id="copy"
+                    onClick={() => {
+                        navigator.clipboard.writeText(fen);
+                        alert(`copied fen: ${fen}`);
+                    }}
+                >
                     Copy FEN
                 </button>
                 <button id="import" onClick={importFen}>
@@ -170,17 +191,22 @@ function App() {
                 <p id="alert" className="center">
                     {msgAlert}
                 </p>
-            </div> 
+            </div>
             <div className="bottom">
                 <p className="title">History</p>
                 <p className="history">
-                    {game.history().length > 0 ? game.history().map((move, index) => {
-                        return (
-                            <>
-                                {index % 2 === 0 ? index / 2 + 1 + "." : null}{move}{" "}
-                            </>
-                        );
-                    }) : <>No moves have been made.</>}
+                    {game.history().length > 0 ? (
+                        game.history().map((move, index) => {
+                            return (
+                                <>
+                                    {index % 2 === 0 ? index / 2 + 1 + "." : null}
+                                    {move}{" "}
+                                </>
+                            );
+                        })
+                    ) : (
+                        <>No moves have been made.</>
+                    )}
                 </p>
             </div>
         </div>
