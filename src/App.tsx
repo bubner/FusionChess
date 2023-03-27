@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { Chess, Square } from "chess.js/src/chess";
+import FusionBoard  from "./FusionBoard";
 import { Chessboard } from "react-chessboard";
 import "./App.css";
 
 function App() {
-    const [game, setGame] = useState(new Chess());
-    const [fen, setFen] = useState(game.fen());
+    const [game, setGame] = useState(new FusionBoard());
+    const [fen, setFen] = useState(game.positions[0]);
     const [sounds, setSounds] = useState<HTMLAudioElement[]>([]);
     const [squareAttributes, setSquareAttributes] = useState<{ [key: string]: { backgroundColor: string } }>({});
     const [msgAlert, setMsgAlert] = useState("");
@@ -51,6 +52,7 @@ function App() {
     // Get the square from a move position, extracting the last two characters for a board position
     function getPosition(square: string) {
         if (square.slice(-1) == "+" || square.slice(-1) == "#") {
+            // If it is a check or checkmate, remove the last character
             return square.slice(-3).substring(0, 2);
         }
         return square.slice(-2);
@@ -60,19 +62,12 @@ function App() {
         // Don't move if the game is over
         if (game.isGameOver()) return false;
 
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        if (game.get(targetSquare) != false) {
-            // Must be capturing a piece, activate fusion
-        }
-
         const copy = game;
         try {
-            const move = copy.move({
-                from: sourceSquare,
-                to: targetSquare,
-                promotion: "q",
-            });
+            const move = copy.movePiece(sourceSquare, targetSquare);
+            if (move === false) {
+                return false;
+            }
             // Play sounds depending on the event
             if (copy.isCheckmate()) {
                 sounds[0].play();
@@ -80,7 +75,7 @@ function App() {
                 sounds[1].play();
             } else if (copy.isDraw()) {
                 sounds[2].play();
-            } else if (move.captured) {
+            } else if (move?.captured) {
                 sounds[3].play();
             } else {
                 sounds[4].play();
@@ -180,13 +175,13 @@ function App() {
                     id="copy"
                     onClick={() => {
                         navigator.clipboard.writeText(fen);
-                        alert(`copied fen: ${fen}`);
+                        alert(`copied: ${fen}`);
                     }}
                 >
-                    Copy FEN
+                    Copy
                 </button>
                 <button id="import" onClick={importFen}>
-                    Import FEN
+                    Import
                 </button>
                 <p id="alert" className="center">
                     {msgAlert}
