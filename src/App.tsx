@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Chess, Square } from "chess.js/src/chess";
+import { Square } from "chess.js/src/chess";
 import FusionBoard  from "./FusionBoard";
 import { Chessboard } from "react-chessboard";
 import "./App.css";
@@ -14,7 +14,7 @@ function App() {
         Math.min(document.documentElement.clientHeight, document.documentElement.clientWidth) - 15
     );
 
-    // Get all audio files and store them in an state array
+    // Get all audio files and store them in a state array
     useMemo(() => {
         setSounds([
             new Audio("./src/assets/checkmate.mp3"),
@@ -75,7 +75,7 @@ function App() {
                 sounds[1].play();
             } else if (copy.isDraw()) {
                 sounds[2].play();
-            } else if (move?.captured) {
+            } else if (typeof move !== "boolean" && move?.captured) {
                 sounds[3].play();
             } else {
                 sounds[4].play();
@@ -137,7 +137,7 @@ function App() {
 
     return (
         <div className="container">
-            <img src="/cdotcom.png" id="bg" />
+            <img src="/cdotcom.png" id="bg" alt="Background" />
             <div className="board">
                 <Chessboard
                     position={fen}
