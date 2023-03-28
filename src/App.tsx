@@ -114,8 +114,8 @@ function App() {
             // If it does, highlight the additional moves of the fused piece
             const moves = game.getFusedMoves(fused, square, game.positions[0]);
             for (let i = 0; i < moves.length; i++) {
-                // Ensure to only assign moves that we are hovering
-                if (moves[i].includes(square)) {
+                // Ensure to only assign moves that we are hovering, and to ensure it is our turn
+                if (moves[i].includes(square) && game.turn() === game.get(square).color) {
                     edits = {
                         ...edits,
                         [getPosition(moves[i])]: {

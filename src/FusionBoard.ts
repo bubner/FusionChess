@@ -63,8 +63,30 @@ export default class FusionBoard extends Chess {
             // Return to the primary board after fusion procedure has completed
             return move;
         } catch (e) {
-            // Stop if the first move was not valid
-            return false;
+            // If the move was allegedly invalid, then try again but on a virtual board
+            this.#virtual_board.load(this.fen());
+            // Edit the virtual board to reflect the current fused pieces
+            for (const [square, piece] of Object.entries(this.#fused)) {
+                this.#virtual_board.put({ type: piece, color: this.turn() }, <Square> square);
+            }
+            // Try to move on the virtual board
+            try {
+                const move = this.#virtual_board.move({
+                    from: movefrom,
+                    to: moveto,
+                    promotion: "q",
+                });
+                // If the move is valid, then continue the move forcefully
+                if (move) {
+                    // Remove the piece from the old square
+                    this.remove(movefrom);
+                    // Add the piece to the new square
+                    this.put({ type: this.get(movefrom).type, color: this.turn() }, moveto);
+                }
+            } catch (e) {
+                // If the move is still invalid, then return false
+                return false;
+            }
         }
     }
 
