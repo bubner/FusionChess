@@ -1,4 +1,4 @@
-import { Chess, Square } from "chess.js/src/chess";
+import { Chess, Square, PieceSymbol } from "chess.js/src/chess";
 
 /**
  * Fusion chess board implementation
@@ -8,8 +8,9 @@ export default class FusionBoard extends Chess {
     // Extending from the Chess class allows us to use the same implementation mechanics of normal chess
     // This allows us to use the same movePiece function and other functions that are already implemented
 
-    #fused: Record<string, string>;
-    #fused_history: Array<Record<string, string>>;
+    #fused: Record<string, PieceSymbol>;
+    #fused_history: Array<Record<Square, PieceSymbol>>;
+    #virtual_board: Chess;
 
     constructor() {
         super();
@@ -17,6 +18,8 @@ export default class FusionBoard extends Chess {
         this.#fused = {};
         // Initialise an empty fused board history
         this.#fused_history = [];
+        // Initialise a virtual board to check for valid moves
+        this.#virtual_board = new Chess();
     }
 
     movePiece(movefrom: Square, moveto: Square) {
@@ -32,14 +35,15 @@ export default class FusionBoard extends Chess {
 
             // Check if the move was a capture, if so, get the type piece on that square
             if (targetsquare) {
-                // If it is already fused, then replace it
+                // If it is already fused, then delete it from the fused board
                 if (this.#fused[moveto]) {
                     delete this.#fused[moveto];
                 }
-                // Add the captured piece to the fused board
-                if (typeof targetsquare !== "boolean") {
-                    this.#fused[moveto] = targetsquare.type;
+                if (this.#fused[movefrom]) {
+                    delete this.#fused[movefrom];
                 }
+                // Add the captured piece to the fused board
+                this.#fused[moveto] = targetsquare.type;
             }
 
             // Update movement of any pieces that have been fused
@@ -50,11 +54,11 @@ export default class FusionBoard extends Chess {
                     delete this.#fused[square];
                     // Add the piece to the new square
                     this.#fused[moveto] = piece;
-                    // Update history
-                    this.#fused_history.push(this.#fused);
                 }
             }
-            console.log(this.#fused);
+
+            // Update history by deep copying the current fused board
+            this.#fused_history.push(JSON.parse(JSON.stringify(this.#fused)));
 
             // Return to the primary board after fusion procedure has completed
             return move;
@@ -81,10 +85,38 @@ export default class FusionBoard extends Chess {
             return undoAction;
 
         // Undo any fused pieces that were attained in the previous move
-        console.log(this.#fused_history);
         this.#fused = this.#fused_history.pop() || {};
-        console.log(this.#fused)
 
         return undoAction;
+    }
+
+    getFusedMoves(fused: Array<string>, hovering: string, fen: string): string[] {
+        // Set up a new virtual board
+        this.#virtual_board.load(fen);
+        // Edit the virtual board to reflect the current fused pieces
+        for (const [square, piece] of Object.entries(this.#fused)) {
+            this.#virtual_board.put({ type: piece, color: this.turn() }, <Square> square);
+        }
+        // Get the moves for the current fused pieces
+        const moves = this.#virtual_board.moves({ verbose: true });
+        // Filter the moves to only include the moves that are valid for the current fused pieces
+        const filteredMoves = moves.filter((move) => {
+            // Check if the move is a capture
+            if (move.captured) {
+                // Check if the captured piece is in the fused pieces
+                if (fused.includes(move.captured)) {
+                    // Check if the piece is not the piece that is currently being hovered
+                    if (move.captured !== hovering) {
+                        // If the piece is not the piece that is currently being hovered, then the move is valid
+                        return true;
+                    }
+                }
+            }
+            // If the move is not a capture, then it is valid
+            return true;
+        }
+        );
+        // Return the filtered moves
+        return filteredMoves.map((move) => move.from + move.to);
     }
 }

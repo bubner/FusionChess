@@ -15,22 +15,23 @@ body {
 }
 
 .container {
-    display: grid; 
-    grid-auto-columns: 1fr; 
-    grid-template-columns: 20% 60% 20%; 
-    grid-template-rows: 75% 1fr; 
-    gap: 0px 0px; 
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-template-columns: 20% 60% 20%;
+    grid-template-rows: 40% 1fr 1fr;
+    gap: 0px 0px;
     grid-template-areas: 
       "ll board u"
-      "bb board u"; 
-  }
+      "mm board u"
+      "bb board u";
+}
 
 /* if screen is less than 1080px, change grid so it is stacked on top of each other */
 @media screen and (max-width: 1080px) {
     .container {
         grid-template-columns: 100%;
         grid-template-rows: auto auto auto;
-        grid-template-areas: "ll" "board" "bb";
+        grid-template-areas: "ll" "board" "bb" "mm";
         overflow-y: auto;
     }
 }
@@ -39,6 +40,10 @@ body {
     overflow: hidden;
 }
 
+.middle {
+    text-align: center;
+    grid-area: mm;
+}
 
 .left {
     text-align: center;

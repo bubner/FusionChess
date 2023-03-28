@@ -55,6 +55,12 @@ function App() {
             // If it is a check or checkmate, remove the last character
             return square.slice(-3).substring(0, 2);
         }
+
+        // If it is a promotion, remove the last two characters
+        if (square.slice(-2) == "=Q" || square.slice(-2) == "=R" || square.slice(-2) == "=B" || square.slice(-2) == "=N") {
+            return square.slice(-4).substring(0, 2);
+        }
+
         return square.slice(-2);
     }
 
@@ -101,6 +107,23 @@ function App() {
                     backgroundColor: "rgba(255, 0, 0, 0.5)",
                 },
             };
+        }
+        // Check if the current square has a fused piece on it
+        const fused = Object.entries(game.positions[1]).find((piece) => piece[0] === square);
+        if (fused) {
+            // If it does, highlight the additional moves of the fused piece
+            const moves = game.getFusedMoves(fused, square, game.positions[0]);
+            for (let i = 0; i < moves.length; i++) {
+                // Ensure to only assign moves that we are hovering
+                if (moves[i].includes(square)) {
+                    edits = {
+                        ...edits,
+                        [getPosition(moves[i])]: {
+                            backgroundColor: "rgba(255, 0, 0, 0.5)",
+                        },
+                    };
+                }
+            }
         }
         // Highlight squares by updating the styles board state
         setSquareAttributes(edits);
@@ -151,6 +174,7 @@ function App() {
             </div>
             <div className="left">
                 <h1 className="title">Fusion Chess</h1>
+                <h3 style={{"color": "white"}}>Controlled Variation</h3>
                 <button
                     id="reset"
                     onClick={() => {
@@ -185,6 +209,24 @@ function App() {
                 </button>
                 <p id="alert" className="center">
                     {msgAlert}
+                </p>
+            </div>
+            <div className="middle">
+                <p className="title">Fused</p>
+                <p className="history">
+                    {
+                        game.positions[1] ? (
+                                Object.entries(game.positions[1]).map((position, index) => {
+                                    return (
+                                        <>
+                                            {index + 1}. {position.slice(0, 1)}={position.slice(-1)}{" "}
+                                        </>
+                                    );
+                                })
+                        ) : (
+                            <>No positions have been fused.</>
+                        )
+                    }
                 </p>
             </div>
             <div className="bottom">
