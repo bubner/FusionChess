@@ -109,7 +109,12 @@ function App() {
             };
         }
         // Check if the current square has a fused piece on it
-        const fused = Object.entries(game.positions[1]).find((piece) => piece[0] === square);
+        let fused = null;
+        try {
+            fused = Object.entries(game.positions[1]).find((piece) => piece[0] === square);
+        } catch (e) {
+            
+        }
         if (fused) {
             // If it does, highlight the additional moves of the fused piece
             const moves = game.getFusedMoves(fused, square, game.positions[0]);
@@ -215,7 +220,7 @@ function App() {
                 <p className="title">Fused</p>
                 <p className="history">
                     {
-                        game.positions[1] ? (
+                        Object.keys(game.positions[1]).length > 0 ? (
                                 Object.entries(game.positions[1]).map((position, index) => {
                                     return (
                                         <>
@@ -224,7 +229,7 @@ function App() {
                                     );
                                 })
                         ) : (
-                            <>No positions have been fused.</>
+                            <>No pieces have been fused.</>
                         )
                     }
                 </p>
@@ -232,7 +237,7 @@ function App() {
             <div className="bottom">
                 <p className="title">History</p>
                 <p className="history">
-                    {game.history().length > 0 ? (
+                    {/* {game.history().length > 0 ? (
                         game.history().map((move, index) => {
                             return (
                                 <>
@@ -243,7 +248,7 @@ function App() {
                         })
                     ) : (
                         <>No moves have been made.</>
-                    )}
+                    )} */}
                 </p>
             </div>
         </div>

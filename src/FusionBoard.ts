@@ -44,6 +44,12 @@ export default class FusionBoard extends Chess {
                 }
                 // Add the captured piece to the fused board
                 this.#fused[moveto] = targetsquare.type;
+                // Change the primary board piece to the fused piece if it has conflicting movement
+                if (this.#fused[moveto] !== this.get(moveto).type || this.get(moveto).type !== "k") {
+                    this.put({ type: this.#fused[moveto], color: this.turn() === "w" ? "b" : "w" }, moveto);
+                }
+                // Update new FEN
+                this.load(this.fen());
             }
 
             // Update movement of any pieces that have been fused
@@ -78,10 +84,24 @@ export default class FusionBoard extends Chess {
                 });
                 // If the move is valid, then continue the move forcefully
                 if (move) {
-                    // Remove the piece from the old square
-                    this.remove(movefrom);
-                    // Add the piece to the new square
-                    this.put({ type: this.get(movefrom).type, color: this.turn() }, moveto);
+                    // Replace the FEN of the current board with the new board
+                    this.load(this.#virtual_board.fen());
+                    // Ensure to replace the virtual pieces with their original pieces
+                    for (const [square, piece] of Object.entries(this.#fused)) {
+                        this.put({ type: this.get(<Square> square).type, color: this.turn() }, <Square> square);
+                    }
+                    // Update movement of any pieces that have been fused
+                    for (const [square, piece] of Object.entries(this.#fused)) {
+                        // Check if the piece is on the same square as the move
+                        if (square === movefrom) {
+                            // Remove the piece from the fused board
+                            delete this.#fused[square];
+                            // Add the piece to the new square
+                            this.#fused[moveto] = piece;
+                        }
+                    }
+                    // Return the move
+                    return true;
                 }
             } catch (e) {
                 // If the move is still invalid, then return false
@@ -107,7 +127,8 @@ export default class FusionBoard extends Chess {
             return undoAction;
 
         // Undo any fused pieces that were attained in the previous move
-        this.#fused = this.#fused_history.pop() || {};
+        this.#fused_history.pop();
+        this.#fused = this.#fused_history[-1] || {};
 
         return undoAction;
     }
