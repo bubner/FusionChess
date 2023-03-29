@@ -66,7 +66,7 @@ function App() {
 
     function onDrop(sourceSquare: Square, targetSquare: Square) {
         // Don't move if the game is over
-        if (game.isGameOver()) return false;
+        // if (game.isGameOver()) return false;
 
         const copy = game;
         try {
@@ -109,12 +109,7 @@ function App() {
             };
         }
         // Check if the current square has a fused piece on it
-        let fused = null;
-        try {
-            fused = Object.entries(game.positions[1]).find((piece) => piece[0] === square);
-        } catch (e) {
-            
-        }
+        const fused = Object.entries(game.positions[1]).find((piece) => piece[0] === square);
         if (fused) {
             // If it does, highlight the additional moves of the fused piece
             const moves = game.getFusedMoves(fused, square, game.positions[0]);
@@ -237,7 +232,7 @@ function App() {
             <div className="bottom">
                 <p className="title">History</p>
                 <p className="history">
-                    {/* {game.history().length > 0 ? (
+                    {game.history().length > 0 ? (
                         game.history().map((move, index) => {
                             return (
                                 <>
@@ -248,7 +243,7 @@ function App() {
                         })
                     ) : (
                         <>No moves have been made.</>
-                    )} */}
+                    )}
                 </p>
             </div>
         </div>
