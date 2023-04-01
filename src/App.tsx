@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Square } from "chess.js/src/chess";
-import FusionBoard  from "./FusionBoard";
+import FusionBoard from "./FusionBoard";
 import { Chessboard } from "react-chessboard";
 import "./App.css";
 
@@ -57,7 +57,12 @@ function App() {
         }
 
         // If it is a promotion, remove the last two characters
-        if (square.slice(-2) == "=Q" || square.slice(-2) == "=R" || square.slice(-2) == "=B" || square.slice(-2) == "=N") {
+        if (
+            square.slice(-2) == "=Q" ||
+            square.slice(-2) == "=R" ||
+            square.slice(-2) == "=B" ||
+            square.slice(-2) == "=N"
+        ) {
             return square.slice(-4).substring(0, 2);
         }
 
@@ -66,7 +71,7 @@ function App() {
 
     function onDrop(sourceSquare: Square, targetSquare: Square) {
         // Don't move if the game is over
-        // if (game.isGameOver()) return false;
+        if (game.isGameOver()) return false;
 
         const copy = game;
         try {
@@ -96,6 +101,7 @@ function App() {
     }
 
     function onHover(square: Square) {
+        if (game.isGameOver()) return;
         onHoverLeave(square);
         const moves = game.moves({ square: square });
         let edits = {};
@@ -112,7 +118,7 @@ function App() {
         const fused = Object.entries(game.positions[1]).find((piece) => piece[0] === square);
         if (fused) {
             // If it does, highlight the additional moves of the fused piece
-            const moves = game.getFusedMoves(fused, square, game.positions[0]);
+            const moves = game.getFusedMoves(fused, square);
             for (let i = 0; i < moves.length; i++) {
                 // Ensure to only assign moves that we are hovering, and to ensure it is our turn
                 if (moves[i].includes(square) && game.turn() === game.get(square).color) {
@@ -174,7 +180,7 @@ function App() {
             </div>
             <div className="left">
                 <h1 className="title">Fusion Chess</h1>
-                <h3 style={{"color": "white"}}>Controlled Variation</h3>
+                <h3 style={{ color: "white" }}>Controlled Variation</h3>
                 <button
                     id="reset"
                     onClick={() => {
@@ -214,19 +220,17 @@ function App() {
             <div className="middle">
                 <p className="title">Fused</p>
                 <p className="history">
-                    {
-                        Object.keys(game.positions[1]).length > 0 ? (
-                                Object.entries(game.positions[1]).map((position, index) => {
-                                    return (
-                                        <>
-                                            {index + 1}. {position.slice(0, 1)}={position.slice(-1)}{" "}
-                                        </>
-                                    );
-                                })
-                        ) : (
-                            <>No pieces have been fused.</>
-                        )
-                    }
+                    {Object.keys(game.positions[1]).length > 0 ? (
+                        Object.entries(game.positions[1]).map((position, index) => {
+                            return (
+                                <>
+                                    {index + 1}. {position.slice(0, 1)}={position.slice(-1).toString().substring(1)}{position.slice(-1).toString().substring(0, 1).toUpperCase()}{" "}
+                                </>
+                            );
+                        })
+                    ) : (
+                        <>No pieces have been fused.</>
+                    )}
                 </p>
             </div>
             <div className="bottom">

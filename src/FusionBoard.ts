@@ -1,5 +1,4 @@
-import { Chess, Square, PieceSymbol, SQUARES } from "chess.js/src/chess";
-
+import { Chess, Square, PieceSymbol, SQUARES, Color } from "chess.js/src/chess";
 /**
  * Fusion chess board implementation
  * @author Lucas Bubner, 2023
@@ -8,8 +7,8 @@ export default class FusionBoard extends Chess {
     // Extending from the Chess class allows us to use the same implementation mechanics of normal chess
     // This allows us to use the same movePiece function and other functions that are already implemented
 
-    #fused: Record<string, PieceSymbol>;
-    #fused_history: Array<Record<Square, PieceSymbol>>;
+    #fused: Record<string, string>;
+    #fused_history: Array<Record<Square, string>>;
     #virtual_board: Chess;
 
     constructor() {
@@ -27,6 +26,24 @@ export default class FusionBoard extends Chess {
         const targetsquare = this.get(moveto);
         // Move on the primary board and return the result
         try {
+            // Try on the virtual board first, as we might be missing info regarding check states
+            this._updateVirtualBoard();
+
+            // Try to move on the virtual board
+            try {
+                this.#virtual_board.move({
+                    from: movefrom,
+                    to: moveto,
+                    promotion: "q",
+                });
+            } catch (e) {
+                console.log(e);
+                if (this.#virtual_board.get(movefrom).type === "k" && this.#virtual_board.isCheck() && this.isCheck()) {
+                    // Cancel if the move was illegal and it was a king movement as it was check
+                    return false;
+                }
+            }
+
             const move = this.move({
                 from: movefrom,
                 to: moveto,
@@ -35,6 +52,15 @@ export default class FusionBoard extends Chess {
 
             // Check if the move was a capture, if so, get the type piece on that square
             if (targetsquare) {
+                // Was it a pawn capture? Don't fuse pawns together
+                if (targetsquare.type === "p") {
+                    return move;
+                }
+                // Check if the piece capturing is the king, we need to run special logic for that
+                if (this.get(movefrom).type === "k") {
+                    // here be pirates, run some check detections here.
+                    return move;
+                }
                 // If it is already fused, then delete it from the fused board
                 if (this.#fused[moveto]) {
                     delete this.#fused[moveto];
@@ -43,7 +69,7 @@ export default class FusionBoard extends Chess {
                     delete this.#fused[movefrom];
                 }
                 // Add the captured piece to the fused board
-                this.#fused[moveto] = targetsquare.type;
+                this.#fused[moveto] = targetsquare.type + this.turn();
             }
 
             // Update movement of any pieces that have been fused
@@ -63,11 +89,12 @@ export default class FusionBoard extends Chess {
             // Return to the primary board after fusion procedure has completed
             return move;
         } catch (e) {
+            console.log(e);
             // If the move was allegedly invalid, then try again but on a virtual board
             this.#virtual_board.load(this.fen());
             // Edit the virtual board to reflect the current fused pieces
             for (const [square, piece] of Object.entries(this.#fused)) {
-                this.#virtual_board.put({ type: piece, color: this.get(<Square> square).color }, <Square> square);
+                this.#virtual_board.put({ type: <PieceSymbol> piece.substring(0, piece.length - 1), color: this.get(<Square> square).color }, <Square> square);
             }
             // Try to move on the virtual board
             try {
@@ -78,11 +105,6 @@ export default class FusionBoard extends Chess {
                 });
                 // If the move is valid, then continue the move forcefully
                 if (move) {
-                    // Check if the move related to the king
-                    if (move.piece === "k") {
-                        // If so, be careful
-                        return false;
-                    }
                     // Make a copy of the primary board
                     const copy = new Chess(this.fen());
                     // Update FEN of the primary board to reflect the virtual board
@@ -162,13 +184,13 @@ export default class FusionBoard extends Chess {
         // Update the virtual board to reflect the current fused pieces
         this.#virtual_board.load(this.fen());
         for (const [square, piece] of Object.entries(this.#fused)) {
-            this.#virtual_board.put({ type: piece, color: this.get(<Square> square).color }, <Square> square);
+            this.#virtual_board.put({ type: <PieceSymbol> piece.charAt(0), color: <Color> piece.slice(-1) }, <Square> square);
         }
     }
 
     isCheckmate() {
         this._updateVirtualBoard();
-        return super.isCheckmate() || (this.#virtual_board.isCheck() && this.moves({ square: this.findKing() }).length === 0);
+        return super.isCheckmate() || (this.#virtual_board.isCheck() && this.moves({ square: this.findKing() }).length === 0) && !this.isAttacked(this.findChecker()!, this.turn());
     }
 
     findKing(): Square | undefined {
@@ -176,6 +198,22 @@ export default class FusionBoard extends Chess {
             const piece = this.get(square);
             if (piece && piece.type === "k" && piece.color === this.turn()) {
                 return <Square> square;
+            }
+        }
+        return undefined;
+    }
+
+    findChecker(): Square | undefined {
+        // Scan every square for a square that is checking the king
+        for (const square of SQUARES) {
+            const piece = this.get(square);
+            if (piece && piece.color !== this.turn()) {
+                // Get the moves for the piece
+                const moves = this.moves({ square: <Square> square });
+                // Check if the moves include the king
+                if (moves.includes(this.findKing() as string)) {
+                    return <Square> square;
+                }
             }
         }
         return undefined;
@@ -190,5 +228,10 @@ export default class FusionBoard extends Chess {
         this._updateVirtualBoard();
         // Strange bug with detection due to the virtual board turn not being updated
         return super.isCheck() || this.#virtual_board.isCheck();
+    }
+
+    isGameOver() {
+        this._updateVirtualBoard();
+        return super.isGameOver() || this.isCheckmate() || this.isStalemate();
     }
 }
