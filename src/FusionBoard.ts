@@ -116,7 +116,7 @@ export default class FusionBoard extends Chess {
 
     reset() {
         super.reset();
-        this.#fused = {}
+        this.#fused = {};
         this.#fused_history = [];
     }
 
@@ -133,7 +133,7 @@ export default class FusionBoard extends Chess {
         return undoAction;
     }
 
-    getFusedMoves(fused: Array<string>, hovering: string, fen: string): string[] {
+    getFusedMoves(fused: Array<string>, hovering: string): string[] {
         this._updateVirtualBoard();
         // Get the moves for the current fused pieces
         const moves = this.#virtual_board.moves({ verbose: true });
@@ -168,22 +168,22 @@ export default class FusionBoard extends Chess {
 
     isCheckmate() {
         this._updateVirtualBoard();
-        return super.isCheckmate() || (this.#virtual_board.isCheck() && this.moves({ square: this.findKing()!! }).length === 0);
+        return super.isCheckmate() || (this.#virtual_board.isCheck() && this.moves({ square: this.findKing() }).length === 0);
     }
 
-    findKing(): Square | null {
+    findKing(): Square | undefined {
         for (const square of SQUARES) {
             const piece = this.get(square);
             if (piece && piece.type === "k" && piece.color === this.turn()) {
                 return <Square> square;
             }
         }
-        return null;
+        return undefined;
     }
 
     isStalemate() {
         this._updateVirtualBoard();
-        return super.isStalemate() && (!this.#virtual_board.isCheck() && this.moves({ square: this.findKing()!! }).length === 0);
+        return super.isStalemate() && (!this.#virtual_board.isCheck() && this.moves({ square: this.findKing() }).length === 0);
     }
 
     isCheck() {
