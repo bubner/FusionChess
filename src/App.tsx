@@ -103,13 +103,13 @@ function App() {
     function onHover(square: Square) {
         if (game.isGameOver()) return;
         onHoverLeave(square);
-        const moves = game.moves({ square: square });
+        const moves = game.moves({ square: square, verbose: true });
         let edits = {};
         for (let i = 0; i < moves.length; i++) {
             // Assign edits to a variable to avoid re-rendering for each move
             edits = {
                 ...edits,
-                [getPosition(moves[i])]: {
+                [moves[i].to]: {
                     backgroundColor: "rgba(255, 0, 0, 0.5)",
                 },
             };

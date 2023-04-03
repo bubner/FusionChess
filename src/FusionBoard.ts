@@ -1,4 +1,4 @@
-import { Chess, Square, PieceSymbol, SQUARES, Color } from "chess.js/src/chess";
+import { Chess, Square, PieceSymbol, SQUARES, Move } from "chess.js/src/chess";
 /**
  * Fusion chess board implementation
  * @author Lucas Bubner, 2023
@@ -37,7 +37,6 @@ export default class FusionBoard extends Chess {
                     promotion: "q",
                 });
             } catch (e) {
-                console.log(e);
                 if (this.#virtual_board.get(movefrom).type === "k" && this.#virtual_board.isCheck() && this.isCheck()) {
                     // Cancel if the move was illegal and it was a king movement as it was check
                     return false;
@@ -69,7 +68,7 @@ export default class FusionBoard extends Chess {
                     delete this.#fused[movefrom];
                 }
                 // Add the captured piece to the fused board
-                this.#fused[moveto] = targetsquare.type
+                this.#fused[moveto] = targetsquare.type;
             }
 
             // Update movement of any pieces that have been fused
@@ -79,7 +78,7 @@ export default class FusionBoard extends Chess {
                     // Remove the piece from the fused board
                     delete this.#fused[square];
                     // Add the piece to the new square
-                    this.#fused[moveto] = piece
+                    this.#fused[moveto] = piece;
                 }
             }
 
@@ -89,7 +88,6 @@ export default class FusionBoard extends Chess {
             // Return to the primary board after fusion procedure has completed
             return move;
         } catch (e) {
-            console.log(e);
             // If the move was allegedly invalid, then try again but on a virtual board
             this._updateVirtualBoard();
             // Try to move on the virtual board
@@ -116,7 +114,7 @@ export default class FusionBoard extends Chess {
                             // Remove the piece from the fused board
                             delete this.#fused[square];
                             // Add the piece to the new square
-                            this.#fused[moveto] = piece
+                            this.#fused[moveto] = piece;
                         }
                     }
                 }
@@ -154,7 +152,7 @@ export default class FusionBoard extends Chess {
     getFusedMoves(fused: Array<string>, hovering: string): string[] {
         this._updateVirtualBoard();
         // Get the moves for the current fused pieces
-        const moves = this.#virtual_board.moves({ verbose: true });
+        const moves = this.getLegalMoves();
         // Filter the moves to only include the moves that are valid for the current fused pieces
         const filteredMoves = moves.filter((move) => {
             // Check if the move is a capture
@@ -222,12 +220,37 @@ export default class FusionBoard extends Chess {
 
     isCheck() {
         this._updateVirtualBoard();
-        // Strange bug with detection due to the virtual board turn not being updated
         return super.isCheck() || this.#virtual_board.isCheck();
     }
 
     isGameOver() {
         this._updateVirtualBoard();
         return super.isGameOver() || this.isCheckmate() || this.isStalemate();
+    }
+
+    getLegalMoves() {
+        this._updateVirtualBoard();
+        const allmoves = super.moves({ verbose: true }).concat(this.#virtual_board.moves({ verbose: true }));
+
+        // Make copies of the virtual and primary boards to prevent editing them
+        const virtual_board = new Chess(this.#virtual_board.fen());
+        const primary_board = new Chess(this.fen());
+
+        // Ensure that a move is legal on the virtual board as well as the main board
+        return allmoves.filter((move) => {
+            // Check if the move is legal on each board
+            try {
+                // Bug with how legal moves are handled and detected
+                primary_board.move(move);
+                virtual_board.move(move);
+                return true;
+            } catch (e) {
+                return false;
+            } finally {
+                // Reset the virtual board to reflect the primary board
+                virtual_board.load(this.#virtual_board.fen());
+                primary_board.load(this.fen());
+            }
+        });
     }
 }
