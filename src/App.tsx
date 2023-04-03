@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { Square } from "chess.js/src/chess";
+import { Square, Piece } from "chess.js/src/chess";
 import FusionBoard from "./FusionBoard";
 import { Chessboard } from "react-chessboard";
 import "./App.css";
 
 function App() {
     const [game, setGame] = useState(new FusionBoard());
+    const [isClicked, setIsClicked] = useState<Square | null>(null);
     const [fen, setFen] = useState(game.positions[0]);
     const [sounds, setSounds] = useState<HTMLAudioElement[]>([]);
     const [squareAttributes, setSquareAttributes] = useState<{ [key: string]: { backgroundColor: string } }>({});
@@ -100,8 +101,35 @@ function App() {
         return true;
     }
 
-    function onHover(square: Square) {
+    function onClick(square: Square) {
         if (game.isGameOver()) return;
+        onHover(square);
+        if (isClicked && square !== isClicked) {
+            // Must be trying to make a move on the board
+            onDrop(isClicked, square);
+            for (const key in squareAttributes) {
+                if (key !== square) {
+                    // Reset all square attributes to default
+                    squareAttributes[key] = {
+                        backgroundColor: "revert",
+                    };
+                }
+            }
+            setIsClicked(null);
+        } else {
+            if (!game.get(square) || game.get(square).color !== game.turn()) return;
+            setIsClicked(square);
+            setSquareAttributes({
+                ...squareAttributes,
+                [square]: {
+                    backgroundColor: "rgba(0, 255, 0, 0.5)",
+                },
+            });
+        }
+    }
+
+    function onHover(square: Square) {
+        if (game.isGameOver() || isClicked) return;
         onHoverLeave(square);
         const moves = game.moves({ square: square, verbose: true });
         let edits = {};
@@ -136,10 +164,12 @@ function App() {
     }
 
     function onHoverLeave(square: Square) {
+        if (isClicked === square) return;
         const moves = game.moves({ square: square });
         for (let i = 0; i < moves.length; i++) {
             // Remove highlighting by updating the styles board state
             setSquareAttributes({
+                ...squareAttributes,
                 [getPosition(moves[i])]: {
                     backgroundColor: "revert",
                 },
@@ -171,6 +201,7 @@ function App() {
                 <Chessboard
                     position={fen}
                     onPieceDrop={onDrop}
+                    onSquareClick={onClick}
                     id="board"
                     boardWidth={boardWidth}
                     onMouseOverSquare={onHover}
@@ -187,6 +218,7 @@ function App() {
                         if (!window.confirm("Confirm reset?")) return;
                         game.reset();
                         setFen(game.fen());
+                        setIsClicked(null);
                     }}
                 >
                     Reset
@@ -196,6 +228,7 @@ function App() {
                     onClick={() => {
                         game.undo();
                         setFen(game.fen());
+                        setIsClicked(null);
                     }}
                 >
                     Undo

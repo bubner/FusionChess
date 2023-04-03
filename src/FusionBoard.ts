@@ -1,4 +1,4 @@
-import { Chess, Square, PieceSymbol, SQUARES, Move } from "chess.js/src/chess";
+import { Chess, Square, PieceSymbol, SQUARES } from "chess.js/src/chess";
 /**
  * Fusion chess board implementation
  * @author Lucas Bubner, 2023
@@ -151,8 +151,11 @@ export default class FusionBoard extends Chess {
 
     getFusedMoves(fused: Array<string>, hovering: string): string[] {
         this._updateVirtualBoard();
+        // console.log(
+        //     "current state of the virtual board\n", this.#virtual_board.ascii()
+        // );
         // Get the moves for the current fused pieces
-        const moves = this.getLegalMoves();
+        const moves = this.#virtual_board.moves({ square: <Square> fused[0], verbose: true });
         // Filter the moves to only include the moves that are valid for the current fused pieces
         const filteredMoves = moves.filter((move) => {
             // Check if the move is a capture
@@ -226,31 +229,5 @@ export default class FusionBoard extends Chess {
     isGameOver() {
         this._updateVirtualBoard();
         return super.isGameOver() || this.isCheckmate() || this.isStalemate();
-    }
-
-    getLegalMoves() {
-        this._updateVirtualBoard();
-        const allmoves = super.moves({ verbose: true }).concat(this.#virtual_board.moves({ verbose: true }));
-
-        // Make copies of the virtual and primary boards to prevent editing them
-        const virtual_board = new Chess(this.#virtual_board.fen());
-        const primary_board = new Chess(this.fen());
-
-        // Ensure that a move is legal on the virtual board as well as the main board
-        return allmoves.filter((move) => {
-            // Check if the move is legal on each board
-            try {
-                // Bug with how legal moves are handled and detected
-                primary_board.move(move);
-                virtual_board.move(move);
-                return true;
-            } catch (e) {
-                return false;
-            } finally {
-                // Reset the virtual board to reflect the primary board
-                virtual_board.load(this.#virtual_board.fen());
-                primary_board.load(this.fen());
-            }
-        });
     }
 }
