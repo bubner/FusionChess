@@ -69,7 +69,7 @@ export default class FusionBoard extends Chess {
                     delete this.#fused[movefrom];
                 }
                 // Add the captured piece to the fused board
-                this.#fused[moveto] = targetsquare.type + this.turn();
+                this.#fused[moveto] = targetsquare.type
             }
 
             // Update movement of any pieces that have been fused
@@ -79,7 +79,7 @@ export default class FusionBoard extends Chess {
                     // Remove the piece from the fused board
                     delete this.#fused[square];
                     // Add the piece to the new square
-                    this.#fused[moveto] = piece;
+                    this.#fused[moveto] = piece
                 }
             }
 
@@ -91,11 +91,7 @@ export default class FusionBoard extends Chess {
         } catch (e) {
             console.log(e);
             // If the move was allegedly invalid, then try again but on a virtual board
-            this.#virtual_board.load(this.fen());
-            // Edit the virtual board to reflect the current fused pieces
-            for (const [square, piece] of Object.entries(this.#fused)) {
-                this.#virtual_board.put({ type: <PieceSymbol> piece.substring(0, piece.length - 1), color: this.get(<Square> square).color }, <Square> square);
-            }
+            this._updateVirtualBoard();
             // Try to move on the virtual board
             try {
                 const move = this.#virtual_board.move({
@@ -120,7 +116,7 @@ export default class FusionBoard extends Chess {
                             // Remove the piece from the fused board
                             delete this.#fused[square];
                             // Add the piece to the new square
-                            this.#fused[moveto] = piece;
+                            this.#fused[moveto] = piece
                         }
                     }
                 }
@@ -184,7 +180,7 @@ export default class FusionBoard extends Chess {
         // Update the virtual board to reflect the current fused pieces
         this.#virtual_board.load(this.fen());
         for (const [square, piece] of Object.entries(this.#fused)) {
-            this.#virtual_board.put({ type: <PieceSymbol> piece.charAt(0), color: <Color> piece.slice(-1) }, <Square> square);
+            this.#virtual_board.put({ type: <PieceSymbol> piece, color: this.get(<Square> square).color }, <Square> square);
         }
     }
 
