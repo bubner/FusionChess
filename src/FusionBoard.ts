@@ -151,9 +151,7 @@ export default class FusionBoard extends Chess {
 
     getFusedMoves(fused: Array<string>, hovering: string): string[] {
         this._updateVirtualBoard();
-        // console.log(
-        //     "current state of the virtual board\n", this.#virtual_board.ascii()
-        // );
+        // console.log("current state of the virtual board\n", this.#virtual_board.ascii());
         // Get the moves for the current fused pieces
         const moves = this.#virtual_board.moves({ square: <Square> fused[0], verbose: true });
         // Filter the moves to only include the moves that are valid for the current fused pieces

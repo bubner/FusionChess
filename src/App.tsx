@@ -50,26 +50,6 @@ function App() {
         setFen(fen);
     }
 
-    // Get the square from a move position, extracting the last two characters for a board position
-    function getPosition(square: string) {
-        if (square.slice(-1) == "+" || square.slice(-1) == "#") {
-            // If it is a check or checkmate, remove the last character
-            return square.slice(-3).substring(0, 2);
-        }
-
-        // If it is a promotion, remove the last two characters
-        if (
-            square.slice(-2) == "=Q" ||
-            square.slice(-2) == "=R" ||
-            square.slice(-2) == "=B" ||
-            square.slice(-2) == "=N"
-        ) {
-            return square.slice(-4).substring(0, 2);
-        }
-
-        return square.slice(-2);
-    }
-
     function onDrop(sourceSquare: Square, targetSquare: Square) {
         // Don't move if the game is over
         if (game.isGameOver()) return false;
@@ -152,7 +132,7 @@ function App() {
                 if (moves[i].includes(square) && game.turn() === game.get(square).color) {
                     edits = {
                         ...edits,
-                        [getPosition(moves[i])]: {
+                        [moves[i].slice(-2)]: {
                             backgroundColor: "rgba(255, 0, 0, 0.5)",
                         },
                     };
@@ -165,12 +145,12 @@ function App() {
 
     function onHoverLeave(square: Square) {
         if (isClicked === square) return;
-        const moves = game.moves({ square: square });
+        const moves = game.moves({ square: square, verbose: true });
         for (let i = 0; i < moves.length; i++) {
             // Remove highlighting by updating the styles board state
             setSquareAttributes({
                 ...squareAttributes,
-                [getPosition(moves[i])]: {
+                [moves[i].to]: {
                     backgroundColor: "revert",
                 },
             });
