@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Square, Piece } from "chess.js/src/chess";
+import { Square } from "chess.js/src/chess";
 import FusionBoard from "./FusionBoard";
 import { Chessboard } from "react-chessboard";
 import "./App.css";
@@ -53,19 +53,17 @@ function App() {
     function onDrop(sourceSquare: Square, targetSquare: Square) {
         // Don't move if the game is over
         if (game.isGameOver()) return false;
-
-        const copy = game;
         try {
-            const move = copy.movePiece(sourceSquare, targetSquare);
+            const move = game.movePiece(sourceSquare, targetSquare);
             if (move === false) {
                 return false;
             }
             // Play sounds depending on the event
-            if (copy.isCheckmate()) {
+            if (game.isCheckmate()) {
                 sounds[0].play();
-            } else if (copy.isCheck()) {
+            } else if (game.isCheck()) {
                 sounds[1].play();
-            } else if (copy.isDraw()) {
+            } else if (game.isDraw()) {
                 sounds[2].play();
             } else if (typeof move !== "boolean" && move?.captured) {
                 sounds[3].play();
@@ -75,9 +73,8 @@ function App() {
         } catch (Error) {
             return false;
         }
-        setGame(copy);
         // Trigger a re-render by updating fen state, as updating object will not trigger it
-        setFen(copy.fen());
+        setFen(game.fen());
         return true;
     }
 
@@ -237,7 +234,8 @@ function App() {
                         Object.entries(game.positions[1]).map((position, index) => {
                             return (
                                 <>
-                                    {index + 1}. {position.slice(0, 1)}={position.slice(-1).toString().substring(1)}{position.slice(-1).toString().substring(0, 1).toUpperCase()}{" "}
+                                    {index + 1}. {position.slice(0, 1)}={position.slice(-1).toString().substring(1)}
+                                    {position.slice(-1).toString().substring(0, 1).toUpperCase()}{" "}
                                 </>
                             );
                         })

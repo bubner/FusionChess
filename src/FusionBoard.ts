@@ -179,13 +179,24 @@ export default class FusionBoard extends Chess {
         // Update the virtual board to reflect the current fused pieces
         this.#virtual_board.load(this.fen());
         for (const [square, piece] of Object.entries(this.#fused)) {
+            // Ensure pieces that are fused actually exist on the board
+            // if (this.get(<Square> square)) {
+            //     // Remove piece
+            //     delete this.#fused[square];
+            //     continue;
+            // }
             this.#virtual_board.put({ type: <PieceSymbol> piece, color: this.get(<Square> square).color }, <Square> square);
         }
     }
 
     isCheckmate() {
         this._updateVirtualBoard();
-        return super.isCheckmate() || (this.#virtual_board.isCheck() && this.moves({ square: this.findKing() }).length === 0) && !this.isAttacked(this.findChecker()!, this.turn());
+        return super.isCheckmate() || (this.#virtual_board.isCheck() && this.moves({ square: this.findKing() }).length === 0) && !this.isAttacked(this.findChecker()!, this.turn()) && this._cannotBlockMate();
+    }
+
+    _cannotBlockMate() {
+        const moves = this.moves().concat(this.#virtual_board.moves());
+        return moves.length === 0;
     }
 
     findKing(): Square | undefined {
