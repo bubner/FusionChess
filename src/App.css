@@ -59,6 +59,12 @@ body {
     grid-area: bb;
 }
 
+#evalbar {
+    height: 98vh;
+    width: 10%;
+    grid-area: u;
+}
+
 .left button {
     /* give buttons a nice style */
     background-color: #5f5f5f;

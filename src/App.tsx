@@ -5,7 +5,7 @@ import { Chessboard } from "react-chessboard";
 import "./App.css";
 
 function App() {
-    const [game, setGame] = useState(new FusionBoard());
+    const [game] = useState(new FusionBoard());
     const [isClicked, setIsClicked] = useState<Square | null>(null);
     const [fen, setFen] = useState(game.positions[0]);
     const [sounds, setSounds] = useState<HTMLAudioElement[]>([]);
@@ -70,6 +70,8 @@ function App() {
             } else {
                 sounds[4].play();
             }
+            // Clear board from highlighting
+            setSquareAttributes({});
         } catch (Error) {
             return false;
         }
@@ -230,7 +232,7 @@ function App() {
             <div className="middle">
                 <p className="title">Fused</p>
                 <p className="history">
-                    {Object.keys(game.positions[1]).length > 0 ? (
+                    {game.positions[1] && Object.keys(game.positions[1]).length > 0 ? (
                         Object.entries(game.positions[1]).map((position, index) => {
                             return (
                                 <>
@@ -261,6 +263,9 @@ function App() {
                     )}
                 </p>
             </div>
+            {/* <div id="evalbar">
+                <EvalBar fen={fen} depth={15} />
+            </div> */}
         </div>
     );
 }

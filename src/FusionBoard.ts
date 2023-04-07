@@ -1,4 +1,4 @@
-import { Chess, Square, PieceSymbol, SQUARES } from "chess.js/src/chess";
+import { Chess, Square, PieceSymbol, SQUARES, Move } from "chess.js/src/chess";
 /**
  * Fusion chess board implementation
  * @author Lucas Bubner, 2023
@@ -9,6 +9,7 @@ export default class FusionBoard extends Chess {
 
     #fused: Record<string, string>;
     #fused_history: Array<Record<Square, string>>;
+    #history_capture: string[];
     #virtual_board: Chess;
 
     constructor() {
@@ -17,6 +18,7 @@ export default class FusionBoard extends Chess {
         this.#fused = {};
         // Initialise an empty fused board history
         this.#fused_history = [];
+        this.#history_capture = [];
         // Initialise a virtual board to check for valid moves
         this.#virtual_board = new Chess();
     }
@@ -51,8 +53,8 @@ export default class FusionBoard extends Chess {
 
             // Check if the move was a capture, if so, get the type piece on that square
             if (targetsquare) {
-                // Was it a pawn capture? Don't fuse pawns together
-                if (targetsquare.type === "p") {
+                // Was it a pawn takes pawn capture? Don't fuse pawns together
+                if (this.get(movefrom).type === "p" && targetsquare.type === "p") {
                     return move;
                 }
                 // Check if the piece capturing is the king, we need to run special logic for that
@@ -60,6 +62,8 @@ export default class FusionBoard extends Chess {
                     // here be pirates, run some check detections here.
                     return move;
                 }
+                // Before fusing, update a history snapshot of the fused board
+                this.#history_capture = this.history();
                 // If it is already fused, then delete it from the fused board
                 if (this.#fused[moveto]) {
                     delete this.#fused[moveto];
@@ -139,21 +143,46 @@ export default class FusionBoard extends Chess {
     undo() {
         // Change the current state to the previous one in the history
         const undoAction = super.undo();
-        if (!undoAction)
-            return undoAction;
+        if (!undoAction) return undoAction;
 
         // Undo any fused pieces that were attained in the previous move
-        this.#fused_history.pop();
-        this.#fused = this.#fused_history[-1];
+        // this.#fused_history.pop();
+        // this.#fused = this.#fused_history[-1];
 
         return undoAction;
+    }
+
+    // Overloads matching chess.js
+    history(): string[];
+    history({ verbose }: { verbose: true }): (Move & { fen: string })[];
+    history({ verbose }: { verbose: false }): string[];
+    history({ verbose }: { verbose: boolean }): string[] | (Move & { fen: string })[];
+    history({ verbose = false }: { verbose?: boolean } = {}) {
+        // Obtain history with a super method
+        const history = super.history({ verbose });
+        if (history.length === 0) {
+            // Check if it was the first move
+            if (this.#fused_history.length === 0) {
+                return history;
+            }
+            // Otherwise a fusion has occurred, undo the last move
+            this.undo();
+            // Get the history of the board
+            const oldhistory = super.history({ verbose });
+            // Redo the last move
+            // this.move(history[history.length - 1]);
+            // Return the histories combined
+            return [...oldhistory, ...history];
+        }
+        // Standard move, continue as normal
+        return history;
     }
 
     getFusedMoves(fused: Array<string>, hovering: string): string[] {
         this._updateVirtualBoard();
         // console.log("current state of the virtual board\n", this.#virtual_board.ascii());
         // Get the moves for the current fused pieces
-        const moves = this.#virtual_board.moves({ square: <Square> fused[0], verbose: true });
+        const moves = this.#virtual_board.moves({ square: <Square>fused[0], verbose: true });
         // Filter the moves to only include the moves that are valid for the current fused pieces
         const filteredMoves = moves.filter((move) => {
             // Check if the move is a capture
@@ -169,8 +198,7 @@ export default class FusionBoard extends Chess {
             }
             // If the move is not a capture, then it is valid
             return true;
-        }
-        );
+        });
         // Return the filtered moves
         return filteredMoves.map((move) => move.from + move.to);
     }
@@ -185,13 +213,22 @@ export default class FusionBoard extends Chess {
             //     delete this.#fused[square];
             //     continue;
             // }
-            this.#virtual_board.put({ type: <PieceSymbol> piece, color: this.get(<Square> square).color }, <Square> square);
+            this.#virtual_board.put(
+                { type: <PieceSymbol>piece, color: this.get(<Square>square).color },
+                <Square>square
+            );
         }
     }
 
     isCheckmate() {
         this._updateVirtualBoard();
-        return super.isCheckmate() || (this.#virtual_board.isCheck() && this.moves({ square: this.findKing() }).length === 0) && !this.isAttacked(this.findChecker()!, this.turn()) && this._cannotBlockMate();
+        return (
+            super.isCheckmate() ||
+            (this.#virtual_board.isCheck() &&
+                this.moves({ square: this.findKing() }).length === 0 &&
+                !this.isAttacked(this.findChecker()!, this.turn()) &&
+                this._cannotBlockMate())
+        );
     }
 
     _cannotBlockMate() {
@@ -203,7 +240,7 @@ export default class FusionBoard extends Chess {
         for (const square of SQUARES) {
             const piece = this.get(square);
             if (piece && piece.type === "k" && piece.color === this.turn()) {
-                return <Square> square;
+                return <Square>square;
             }
         }
         return undefined;
@@ -215,10 +252,10 @@ export default class FusionBoard extends Chess {
             const piece = this.get(square);
             if (piece && piece.color !== this.turn()) {
                 // Get the moves for the piece
-                const moves = this.moves({ square: <Square> square });
+                const moves = this.moves({ square: <Square>square });
                 // Check if the moves include the king
                 if (moves.includes(this.findKing() as string)) {
-                    return <Square> square;
+                    return <Square>square;
                 }
             }
         }
@@ -227,7 +264,11 @@ export default class FusionBoard extends Chess {
 
     isStalemate() {
         this._updateVirtualBoard();
-        return super.isStalemate() && (!this.#virtual_board.isCheck() && this.moves({ square: this.findKing() }).length === 0);
+        return (
+            super.isStalemate() &&
+            !this.#virtual_board.isCheck() &&
+            this.moves({ square: this.findKing() }).length === 0
+        );
     }
 
     isCheck() {
