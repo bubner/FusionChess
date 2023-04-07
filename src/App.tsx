@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Square } from "chess.js/src/chess";
 import FusionBoard from "./FusionBoard";
 import { Chessboard } from "react-chessboard";
+import Stockfish from "./Stockfish";
 import "./App.css";
 
 function App() {
@@ -263,9 +264,9 @@ function App() {
                     )}
                 </p>
             </div>
-            {/* <div id="evalbar">
-                <EvalBar fen={fen} depth={15} />
-            </div> */}
+            <div id="evalbar">
+                <Stockfish fen={fen} depth={24} />
+            </div>
         </div>
     );
 }
