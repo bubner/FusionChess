@@ -265,7 +265,7 @@ function App() {
                 </p>
             </div>
             <div id="evalbar">
-                <Stockfish fen={fen} depth={24} />
+                <Stockfish fen={fen} depth={15} />
             </div>
         </div>
     );

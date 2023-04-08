@@ -1,5 +1,5 @@
-import {defineConfig} from 'vite'
-import react from '@vitejs/plugin-react-swc'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -7,6 +7,11 @@ export default defineConfig({
     server: {
         watch: {
             usePolling: true,
-        }
-    }
-})
+        },
+        headers: {
+            // Headers required for cross-origin isolation
+            "Cross-Origin-Opener-Policy": "same-origin",
+            "Cross-Origin-Embedder-Policy": "require-corp",
+        },
+    },
+});
