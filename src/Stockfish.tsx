@@ -179,6 +179,17 @@ function Stockfish({ fen, depth }: { fen: string | null; depth: number }) {
         if (window.innerWidth > 1270)
             dummy.current?.scrollIntoView({ behavior: "auto" });
     }, [eData]);
+    
+    function bestMove() {
+        if (eData && eData.length > 0) {
+            const lastLine = eData[eData.length - 1];
+            let bestMove = null;
+            if (lastLine.includes("bestmove")) {
+                bestMove = lastLine.split("bestmove ")[1].split(" ")[0];
+            }
+            return bestMove;
+        }
+    }
 
     return (
         <>
@@ -239,8 +250,10 @@ function Stockfish({ fen, depth }: { fen: string | null; depth: number }) {
             </div>
             <div id="stockfish" style={{ textAlign: "center" }}>
                 <p className="title">Stockfish 15</p>
-                Classical analysis <br /> Current engine evaluation: {evals.startsWith("M") ? evals.replace("-", "") : evals} <br />
-                Maxdepth=24 <br /> <br />
+                Classical analysis <br />
+                Current engine evaluation: {evals.startsWith("M") ? evals.replace("-", "") : evals} <br />
+                Top engine move: {bestMove() ?? "⌀"} <br />
+                Max depth=19 <br /> <br />
                 <div
                     style={{
                         fontFamily: "Lucida Console, sans-serif",
