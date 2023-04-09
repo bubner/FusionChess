@@ -23,7 +23,7 @@ export default class FusionBoard extends Chess {
         this.#virtual_board = new Chess();
     }
 
-    movePiece(movefrom: Square, moveto: Square) {
+    movePiece(movefrom: Square, moveto: Square): Move | false {
         // Get the target square of the move
         const targetsquare = this.get(moveto);
         // Move on the primary board and return the result

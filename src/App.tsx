@@ -9,11 +9,12 @@ function App() {
     const [game] = useState(new FusionBoard());
     const [isClicked, setIsClicked] = useState<Square | null>(null);
     const [fen, setFen] = useState(game.positions[0]);
+    const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
     const [sounds, setSounds] = useState<HTMLAudioElement[]>([]);
     const [squareAttributes, setSquareAttributes] = useState<{ [key: string]: { backgroundColor: string } }>({});
     const [msgAlert, setMsgAlert] = useState("");
     const [boardWidth, setBoardWidth] = useState<number>(
-        Math.min(document.documentElement.clientHeight, document.documentElement.clientWidth) - 15
+        Math.max(400, Math.min(document.documentElement.clientHeight, document.documentElement.clientWidth) - 15)
     );
 
     // Get all audio files and store them in a state array
@@ -23,6 +24,7 @@ function App() {
             new Audio("./src/assets/check.mp3"),
             new Audio("./src/assets/draw.mp3"),
             new Audio("./src/assets/capture.mp3"),
+            new Audio("./src/assets/castle.mp3"),
             new Audio("./src/assets/move.mp3"),
         ]);
         sounds.forEach((sound) => {
@@ -33,7 +35,12 @@ function App() {
     // Force a rerender if the screen dimensions change
     useEffect(() => {
         const handleResize = () => {
-            setBoardWidth(Math.min(document.documentElement.clientHeight, document.documentElement.clientWidth) - 15);
+            setBoardWidth(
+                Math.max(
+                    400,
+                    Math.min(document.documentElement.clientHeight, document.documentElement.clientWidth) - 15
+                )
+            );
         };
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
@@ -53,7 +60,8 @@ function App() {
 
     function onDrop(sourceSquare: Square, targetSquare: Square) {
         // Don't move if the game is over
-        if (game.isGameOver()) return false;
+        if (game.isGameOver() || !isGameStarted) return false;
+        setIsClicked(null);
         try {
             const move = game.movePiece(sourceSquare, targetSquare);
             if (move === false) {
@@ -68,8 +76,10 @@ function App() {
                 sounds[2].play();
             } else if (typeof move !== "boolean" && move?.captured) {
                 sounds[3].play();
-            } else {
+            } else if (move.san === "O-O" || move.san === "O-O-O") {
                 sounds[4].play();
+            } else {
+                sounds[5].play();
             }
             // Clear board from highlighting
             setSquareAttributes({});
@@ -82,7 +92,7 @@ function App() {
     }
 
     function onClick(square: Square) {
-        if (game.isGameOver()) return;
+        if (game.isGameOver() || !isGameStarted) return;
         onHover(square);
         if (isClicked && square !== isClicked) {
             // Must be trying to make a move on the board
@@ -109,7 +119,7 @@ function App() {
     }
 
     function onHover(square: Square) {
-        if (game.isGameOver() || isClicked) return;
+        if (game.isGameOver() || isClicked || !isGameStarted) return;
         onHoverLeave(square);
         const moves = game.moves({ square: square, verbose: true });
         let edits = {};
@@ -144,7 +154,7 @@ function App() {
     }
 
     function onHoverLeave(square: Square) {
-        if (isClicked === square) return;
+        if (isClicked === square || !isGameStarted) return;
         const moves = game.moves({ square: square, verbose: true });
         for (let i = 0; i < moves.length; i++) {
             // Remove highlighting by updating the styles board state
@@ -155,6 +165,11 @@ function App() {
                 },
             });
         }
+    }
+
+    function start() {
+        new Audio("./src/assets/start.mp3").play();
+        setIsGameStarted(true);
     }
 
     useEffect(() => {
@@ -199,6 +214,8 @@ function App() {
                         game.reset();
                         setFen(game.fen());
                         setIsClicked(null);
+                        setSquareAttributes({});
+                        setIsGameStarted(false);
                     }}
                 >
                     Reset
@@ -225,6 +242,14 @@ function App() {
                 </button>
                 <button id="import" onClick={importFen}>
                     Import
+                </button>{" "}
+                <br />
+                <button
+                    id="start"
+                    style={{ border: "2px solid lightgreen", display: isGameStarted ? "none" : "revert", backgroundColor: "green" }}
+                    onClick={start}
+                >
+                    Start
                 </button>
                 <p id="alert" className="center">
                     {msgAlert}
@@ -264,7 +289,7 @@ function App() {
                     )}
                 </p>
             </div>
-            <Stockfish fen={fen} depth={24} />
+            <Stockfish fen={isGameStarted ? fen : null} depth={24} />
         </div>
     );
 }

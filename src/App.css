@@ -27,7 +27,8 @@ body {
 }
 
 #stockfish {
-    display: none;
+    grid-area: u;
+    color: white;
 }
 
 /* if screen is less than 1270px, change grid so it is stacked on top of each other */
@@ -91,7 +92,7 @@ body {
 }
 
 /* give left button a hover effect */
-.left button:hover {
+.left button:hover:not(#start) {
     transition: all 250ms ease-in-out;
     background-color: #b9b9b9;
     color: black;

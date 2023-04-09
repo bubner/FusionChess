@@ -4,7 +4,7 @@
  * @author Lucas Bubner, 2023
  */
 import { Chess } from "chess.js/src/chess";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Fragment, createRef } from "react";
 
 class Engine {
     engine: Worker;
@@ -23,7 +23,7 @@ class Engine {
     }
 
     onStockfishMessage = (event: MessageEvent, fen: string) => {
-        console.debug(event.data);
+        // console.debug(`SF15: ${event.data}`);
         if (event.data.startsWith("info depth")) {
             let messageEvalType;
             const message = event.data.split(" ");
@@ -46,10 +46,6 @@ class Engine {
                     messageEvalType = turn === "w" ? "0-1" : "1-0";
                 }
                 this.eval = messageEvalType;
-                // Strange occurances with negative checkmate, we simply remove negative symbol
-                if (this.eval.includes("-") && !(this.eval.startsWith("0") || this.eval.startsWith("1"))) {
-                    this.eval = this.eval.replace("-", "");
-                }
             } else {
                 this.eval = evaluation;
             }
@@ -57,7 +53,7 @@ class Engine {
             let heightEval: number;
             if (messageEvalType.startsWith("M")) {
                 // Is checkmate in X, fill the whole bar depending on which side is winning
-                heightEval = turn === "w" ? 0 : 100;
+                heightEval = !this.eval.includes("-") && turn === "b" ? 100 : 0;
             } else {
                 heightEval = this.eval.startsWith("-")
                     ? 50 + this._calcHeight(Math.abs(Number(this.eval)))
@@ -94,16 +90,48 @@ class Engine {
     };
 }
 
-function Stockfish({ fen, depth }: { fen: string; depth: number }) {
+function Stockfish({ fen, depth }: { fen: string | null; depth: number }) {
     const stockfishRef = useRef<Engine | null>(null);
     const [evals, setEvals] = useState<string>("0.0");
     const [eData, setEdata] = useState<Array<string>>([]);
-    const [heightDef, setHeightDef] = useState<number>(50);
+    const [heightDef, setHeightDef] = useState<number>(75);
 
     useEffect(() => {
+        if (!fen) {
+            setEdata(["Setting up Stockfish 15..."]);
+            const reqs = [new XMLHttpRequest(), new XMLHttpRequest()];
+            reqs[0].open("HEAD", "/stockfish.js", false);
+            reqs[1].open("HEAD", "/stockfish.wasm", false);
+            reqs.forEach((req) => req.send());
+
+            if (reqs[0].status === 404) {
+                setEdata((eData) => [...eData, "Could not find stockfish.js file."]);
+            } else {
+                setEdata((eData) => [...eData, "Found stockfish.js."]);
+            }
+
+            if (reqs[1].status === 404) {
+                setEdata((eData) => [...eData, "Could not find WebAssembly binary."]);
+            } else {
+                setEdata((eData) => [...eData, "Found WebAssembly binary."]);
+            }
+
+            if (reqs[0].status === 404 || reqs[1].status === 404) {
+                setEdata((eData) => [...eData, "Error: Unable to configure."]);
+                setEvals("⌀");
+            } else {
+                setEdata((eData) => [...eData, "Stockfish 15 is ready."]);
+                setEvals("0.0");
+            }
+            
+            setHeightDef(50);
+            return;
+        }
+
         const stockfish = stockfishRef.current ?? new Engine(fen, depth);
         // Clear edata array for next evaluation
-        setEdata([]);
+        if (!eData.includes("Error: Unable to configure."))
+            setEdata([]);
 
         // Run classical evaluation with Stockfish 15
         stockfish.engine.postMessage("uci");
@@ -115,7 +143,14 @@ function Stockfish({ fen, depth }: { fen: string; depth: number }) {
         let debounceTimeout: ReturnType<typeof setTimeout>;
 
         const updateEval = (event: MessageEvent) => {
-            setEdata((eData) => [...eData, event.data]);
+            setEdata((eData) => [
+                ...eData,
+                `[${new Date(Date.now()).toLocaleString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                })}] ${event.data}`,
+            ]);
             clearTimeout(debounceTimeout);
             debounceTimeout = setTimeout(() => {
                 // Check for changes in stockfish.eval
@@ -137,6 +172,14 @@ function Stockfish({ fen, depth }: { fen: string; depth: number }) {
         };
     }, [fen, depth]);
 
+    // Config dummy to always be in view
+    const dummy = createRef<HTMLDivElement>();
+
+    useEffect(() => {
+        if (window.innerWidth > 1270)
+            dummy.current?.scrollIntoView({ behavior: "auto" });
+    }, [eData]);
+
     return (
         <>
             <div id="evalbar">
@@ -148,22 +191,26 @@ function Stockfish({ fen, depth }: { fen: string; depth: number }) {
                         position: "absolute",
                         zIndex: "-1",
                         borderRadius: "10px",
+                        transform: "translateX(-125%)"
                     }}
                 />
                 <div
                     style={{
                         height: heightDef + "%",
-                        width: "3vw",
+                        width: "3.1vw",
                         backgroundColor: "#1a1a1a",
                         transition: "height 1s",
+                        zIndex: "-1",
                         borderRadius: "8px 8px 0 0",
+                        transform: "translateX(-121%)"
                     }}
                 />
                 <div
                     style={{
-                        transform: `translate(25%, ${heightDef}%)`,
+                        transform: `translate(-160%, ${heightDef}%)`,
                         transition: "transform 1s",
                         textAlign: "center",
+                        zIndex: "-1",
                         fontWeight: "bold",
                         display:
                             evals.startsWith("M") || evals.startsWith("1-") || evals.startsWith("0-")
@@ -175,10 +222,11 @@ function Stockfish({ fen, depth }: { fen: string; depth: number }) {
                 </div>
                 <p
                     style={{
-                        transform: `translate(25%, ${heightDef > 50 ? -51 : 46}vh)`,
+                        transform: `translate(-160%, ${heightDef > 50 ? -51 : 46}vh)`,
                         transition: "transform 1s, display 1s",
                         textAlign: "center",
                         fontWeight: "bold",
+                        zIndex: "-1",
                         display:
                             evals.startsWith("M") || evals.startsWith("1-") || evals.startsWith("0-")
                                 ? "block"
@@ -186,12 +234,34 @@ function Stockfish({ fen, depth }: { fen: string; depth: number }) {
                         color: heightDef > 50 ? "white" : "black",
                     }}
                 >
-                    {evals}
+                    {evals.startsWith("M") ? evals.replace("-", "") : evals}
                 </p>
             </div>
-            <p id="stockfish">
-                {evals}, {eData}
-            </p>
+            <div id="stockfish" style={{ textAlign: "center" }}>
+                <p className="title">Stockfish 15</p>
+                Classical analysis <br /> Current engine evaluation: {evals.startsWith("M") ? evals.replace("-", "") : evals} <br />
+                Maxdepth=24 <br /> <br />
+                <div
+                    style={{
+                        fontFamily: "Lucida Console, sans-serif",
+                        border: "2px solid grey",
+                        padding: "12px",
+                        textAlign: "left",
+                        minHeight: "60vh",
+                        maxHeight: "60vh",
+                        overflowY: "scroll",
+                        whiteSpace: "nowrap",
+                        background: "#000",
+                    }}
+                >
+                    {eData.map((d, i) => (
+                        <Fragment key={i}>
+                            {d} <br />
+                        </Fragment>
+                    ))}
+                    <div id="dummy" ref={dummy} />
+                </div>
+            </div>
         </>
     );
 }
