@@ -191,7 +191,7 @@ function App() {
             </div>
             <div className="left">
                 <h1 className="title">Fusion Chess</h1>
-                <h3 style={{ color: "white" }}>Controlled Variation</h3>
+                <h3 style={{ color: "white" }}>Lucas Bubner, 2023</h3>
                 <button
                     id="reset"
                     onClick={() => {
@@ -264,9 +264,7 @@ function App() {
                     )}
                 </p>
             </div>
-            <div id="evalbar">
-                <Stockfish fen={fen} depth={15} />
-            </div>
+            <Stockfish fen={fen} depth={24} />
         </div>
     );
 }

@@ -26,13 +26,23 @@ body {
       "bb board u";
 }
 
-/* if screen is less than 1080px, change grid so it is stacked on top of each other */
-@media screen and (max-width: 1080px) {
+#stockfish {
+    display: none;
+}
+
+/* if screen is less than 1270px, change grid so it is stacked on top of each other */
+@media screen and (max-width: 1270px) {
     .container {
         grid-template-columns: 100%;
         grid-template-rows: auto auto auto;
-        grid-template-areas: "ll" "board" "bb" "mm";
+        grid-template-areas: "ll" "board" "bb" "mm" "u";
         overflow-y: auto;
+    }
+    #evalbar {
+        display: none;
+    }
+    #stockfish {
+        display: block;
     }
 }
 
