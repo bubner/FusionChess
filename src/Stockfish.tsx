@@ -3,33 +3,40 @@
  * Compatible with FEN strings only. Limitations include FusionChess's dual board nature.
  * @author Lucas Bubner, 2023
  */
-import { Chess } from "chess.js/src/chess";
 import { useEffect, useRef, useState, Fragment, createRef } from "react";
 
 class Engine {
     engine: Worker;
-    eval: string;
-    fen: string;
+    fusionengine: Worker;
+    eval: string[];
+    fen: string[] = ["", ""];
     depth: number;
     evalBarHeight: number;
 
-    constructor(fen: string, depth: number) {
+    constructor(fen: string, vfen: string, depth: number) {
         this.engine = new Worker("/stockfish.js");
-        this.eval = "0.0";
-        this.fen = fen;
+        this.fusionengine = new Worker("/stockfish.js");
+        this.eval = ["0.0", "0.0"];
+        this.fen[0] = fen;
+        this.fen[1] = vfen;
         this.depth = depth;
-        this.engine.onmessage = (event) => this.onStockfishMessage(event, this.fen);
+        this.engine.onmessage = (e) => this.onStockfishMessage(e, this.fen, "e");
+        this.fusionengine.onmessage = (e) => this.onStockfishMessage(e, this.fen, "v")
         this.evalBarHeight = 50;
     }
 
-    onStockfishMessage = (event: MessageEvent, fen: string) => {
+    onStockfishMessage = (event: MessageEvent, fen: string[], engine: string) => {
         // console.debug(`SF15: ${event.data}`);
         if (event.data.startsWith("info depth")) {
             let messageEvalType;
             const message = event.data.split(" ");
-            const chess = new Chess();
-            chess.load(fen);
-            const turn = chess.turn();
+            // Determine the current turn from the FEN, should be the same
+            let turn;
+            if (engine === "e") {
+                turn = fen[0].split(" ")[1];
+            } else {
+                turn = fen[1].split(" ")[1];
+            }
 
             if (message.includes("mate")) {
                 messageEvalType = `M${message[message.indexOf("mate") + 1]}`;
@@ -37,31 +44,43 @@ class Engine {
                 messageEvalType = message[message.indexOf("cp") + 1];
             }
 
-            const evalres = String(messageEvalType / 100.0);
-            const evaluation = this._convertEvaluation(evalres, turn);
+            const evaluation = this._convertEvaluation(String(messageEvalType / 100.0), turn);
             // Check if the eval is NaN
             if (evaluation.includes("NaN")) {
                 // Must be a M value
                 if (messageEvalType === "M0") {
                     messageEvalType = turn === "w" ? "0-1" : "1-0";
                 }
-                this.eval = messageEvalType;
+                if (engine === "e") {
+                    this.eval[0] = evaluation;
+                } else {
+                    this.eval[1] = evaluation;
+                }
             } else {
-                this.eval = evaluation;
+                if (engine === "e") {
+                    this.eval[0] = evaluation;
+                } else {
+                    this.eval[1] = evaluation;
+                }
             }
 
             let heightEval: number;
+            const choseneval = this._chooseAppropriateEval();
             if (messageEvalType.startsWith("M")) {
                 // Is checkmate in X, fill the whole bar depending on which side is winning
-                heightEval = !this.eval.includes("-") && turn === "b" ? 100 : 0;
+                heightEval = !choseneval.includes("-") && turn === "b" ? 100 : 0;
             } else {
-                heightEval = this.eval.startsWith("-")
-                    ? 50 + this._calcHeight(Math.abs(Number(this.eval)))
-                    : 50 - this._calcHeight(Math.abs(Number(this.eval)));
+                heightEval = choseneval.startsWith("-")
+                    ? 50 + this._calcHeight(Math.abs(Number(choseneval)))
+                    : 50 - this._calcHeight(Math.abs(Number(choseneval)));
             }
             this.evalBarHeight = heightEval;
         }
     };
+
+    private _chooseAppropriateEval() {
+        return this.eval[0];
+    }
 
     private _calcHeight = (x: number) => {
         // Height calculation code for eval bar. Don't ask what it does, I don't know either, but it somehow works.
@@ -90,7 +109,7 @@ class Engine {
     };
 }
 
-function Stockfish({ fen, depth }: { fen: string | null; depth: number }) {
+function Stockfish({ fen, vfen, depth }: { fen: string | null; vfen: string | null; depth: number }) {
     const stockfishRef = useRef<Engine | null>(null);
     const [evals, setEvals] = useState<string>("0.0");
     const [eData, setEdata] = useState<Array<string>>([]);
@@ -128,7 +147,7 @@ function Stockfish({ fen, depth }: { fen: string | null; depth: number }) {
             return;
         }
 
-        const stockfish = stockfishRef.current ?? new Engine(fen, depth);
+        const stockfish = stockfishRef.current ?? new Engine(fen, vfen, depth);
         // Clear edata array for next evaluation
         if (!eData.includes("Error: Unable to configure."))
             setEdata([]);
@@ -136,8 +155,17 @@ function Stockfish({ fen, depth }: { fen: string | null; depth: number }) {
         // Run classical evaluation with Stockfish 15
         stockfish.engine.postMessage("uci");
         stockfish.engine.postMessage("ucinewgame");
-        stockfish.engine.postMessage(`position fen ${fen}`);
+        stockfish.engine.postMessage(`position fen ${stockfish.fen[0]}`);
         stockfish.engine.postMessage(`go depth ${depth}`);
+
+        // Do we have anything on the virtual board? Check the differences and if they are
+        // then run an evaluation on the virtual board
+        if (stockfish.fen[0] !== stockfish.fen[1]) {
+            stockfish.fusionengine.postMessage("uci");
+            stockfish.fusionengine.postMessage("ucinewgane");
+            stockfish.fusionengine.postMessage(`position fen ${stockfish.fen[1]}`);
+            stockfish.fusionengine.postMessage(`go depth ${depth}`);
+        }
 
         // Use a debounce timeout to prevent the eval from updating rapidly
         let debounceTimeout: ReturnType<typeof setTimeout>;
@@ -154,21 +182,23 @@ function Stockfish({ fen, depth }: { fen: string | null; depth: number }) {
             clearTimeout(debounceTimeout);
             debounceTimeout = setTimeout(() => {
                 // Check for changes in stockfish.eval
-                if (stockfish.eval !== event.data) {
+                if (stockfish.eval[0] !== event.data) {
                     // Do not set evals if the stockfish.eval value is 'info' meaning that there is no evaluation ready
                     // This happens in higher depth analysis above 20, where it takes a lot of computing power to execute
-                    if (stockfish.eval !== "info") setEvals(stockfish.eval);
+                    if (stockfish.eval[0] !== "info") setEvals(stockfish.eval[0]);
                     // Don't set the eval height if it is NaN, we cannot translate it and it usually only comes up when it is M0 (checkmate)
                     if (!isNaN(stockfish.evalBarHeight)) setHeightDef(stockfish.evalBarHeight);
                 }
             }, 500);
         };
         stockfish.engine.addEventListener("message", updateEval);
+        stockfish.fusionengine.addEventListener("message", updateEval);
 
         return () => {
             clearTimeout(debounceTimeout);
             stockfish.engine.removeEventListener("message", updateEval);
             stockfish.engine.terminate();
+            stockfish.fusionengine.terminate();
         };
     }, [fen, depth]);
 

@@ -130,8 +130,9 @@ export default class FusionBoard extends Chess {
         }
     }
 
-    get positions(): [string, Record<string, string>] {
-        return [this.fen(), this.#fused];
+    get positions(): [string, Record<string, string>, string] {
+        this._updateVirtualBoard();
+        return [this.fen(), this.#fused, this.#virtual_board.fen()];
     }
 
     reset() {
