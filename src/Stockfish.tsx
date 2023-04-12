@@ -52,9 +52,9 @@ class Engine {
                     messageEvalType = turn === "w" ? "0-1" : "1-0";
                 }
                 if (engine === "e") {
-                    this.eval[0] = evaluation;
+                    this.eval[0] = messageEvalType;
                 } else {
-                    this.eval[1] = evaluation;
+                    this.eval[1] = messageEvalType;
                 }
             } else {
                 if (engine === "e") {
@@ -65,7 +65,7 @@ class Engine {
             }
 
             let heightEval: number;
-            const choseneval = this._chooseAppropriateEval();
+            const choseneval = this.chooseAppropriateEval();
             if (messageEvalType.startsWith("M")) {
                 // Is checkmate in X, fill the whole bar depending on which side is winning
                 heightEval = !choseneval.includes("-") && turn === "b" ? 100 : 0;
@@ -78,8 +78,25 @@ class Engine {
         }
     };
 
-    private _chooseAppropriateEval() {
-        return this.eval[0];
+    chooseAppropriateEval() {
+        if (!this.eval[1]) return this.eval[0];
+        if (this.eval[0] === "info" && this.eval[1] === "info") {
+            // Both engines are thinking
+            return "0.0";
+        }
+        
+        // Return the score with the strongest evaluation
+        if (this.eval[0].startsWith("M") || this.eval[0].startsWith("0-") || this.eval[0].startsWith("1-")) {
+            return this.eval[0];
+        } else if (this.eval[1].startsWith("M") || this.eval[0].startsWith("0-") || this.eval[0].startsWith("1-")) {
+            return this.eval[1];
+        }
+        
+        if (this.eval[0].startsWith("-") && this.eval[1].startsWith("-")) {
+            return String(Math.min(parseFloat(this.eval[0]), parseFloat(this.eval[1])));
+        } else {
+            return String(Math.max(parseFloat(this.eval[0]), parseFloat(this.eval[1])));
+        }
     }
 
     private _calcHeight = (x: number) => {
@@ -109,7 +126,7 @@ class Engine {
     };
 }
 
-function Stockfish({ fen, vfen, depth }: { fen: string | null; vfen: string | null; depth: number }) {
+function Stockfish({ fen, vfen, depth }: { fen: string | null; vfen: string; depth: number }) {
     const stockfishRef = useRef<Engine | null>(null);
     const [evals, setEvals] = useState<string>("0.0");
     const [eData, setEdata] = useState<Array<string>>([]);
@@ -142,7 +159,7 @@ function Stockfish({ fen, vfen, depth }: { fen: string | null; vfen: string | nu
                 setEdata((eData) => [...eData, "Stockfish 15 is ready."]);
                 setEvals("0.0");
             }
-            
+
             setHeightDef(50);
             return;
         }
@@ -170,10 +187,10 @@ function Stockfish({ fen, vfen, depth }: { fen: string | null; vfen: string | nu
         // Use a debounce timeout to prevent the eval from updating rapidly
         let debounceTimeout: ReturnType<typeof setTimeout>;
 
-        const updateEval = (event: MessageEvent) => {
+        const updateEval = (event: MessageEvent, type: string) => {
             setEdata((eData) => [
                 ...eData,
-                `[${new Date(Date.now()).toLocaleString([], {
+                `[${type} ${new Date(Date.now()).toLocaleString([], {
                     hour: "2-digit",
                     minute: "2-digit",
                     second: "2-digit",
@@ -185,18 +202,20 @@ function Stockfish({ fen, vfen, depth }: { fen: string | null; vfen: string | nu
                 if (stockfish.eval[0] !== event.data) {
                     // Do not set evals if the stockfish.eval value is 'info' meaning that there is no evaluation ready
                     // This happens in higher depth analysis above 20, where it takes a lot of computing power to execute
-                    if (stockfish.eval[0] !== "info") setEvals(stockfish.eval[0]);
+                    const evaluation = stockfish.chooseAppropriateEval();
+                    if (evaluation && evaluation !== "NaN") setEvals(evaluation);
                     // Don't set the eval height if it is NaN, we cannot translate it and it usually only comes up when it is M0 (checkmate)
                     if (!isNaN(stockfish.evalBarHeight)) setHeightDef(stockfish.evalBarHeight);
                 }
             }, 500);
         };
-        stockfish.engine.addEventListener("message", updateEval);
-        stockfish.fusionengine.addEventListener("message", updateEval);
+        stockfish.engine.addEventListener("message", (e) => updateEval(e, "s"));
+        stockfish.fusionengine.addEventListener("message", (e) => updateEval(e, "v"));
 
         return () => {
             clearTimeout(debounceTimeout);
-            stockfish.engine.removeEventListener("message", updateEval);
+            stockfish.engine.removeEventListener("message", (e) => updateEval(e, "s"));
+            stockfish.fusionengine.removeEventListener("message", (e) => updateEval(e, "v"));
             stockfish.engine.terminate();
             stockfish.fusionengine.terminate();
         };
@@ -209,7 +228,7 @@ function Stockfish({ fen, vfen, depth }: { fen: string | null; vfen: string | nu
         if (window.innerWidth > 1270)
             dummy.current?.scrollIntoView({ behavior: "auto" });
     }, [eData]);
-    
+
     function bestMove() {
         if (eData && eData.length > 0) {
             const lastLine = eData[eData.length - 1];
