@@ -1,4 +1,4 @@
-/**
+8/**
  * Stockfish compatibility module for displaying current evaluation status information.
  * Compatible with FEN strings only. Limitations include FusionChess's dual board nature.
  * @author Lucas Bubner, 2023
@@ -16,7 +16,7 @@ class Engine {
     constructor(fen: string, vfen: string, depth: number) {
         this.engine = new Worker("/stockfish.js");
         this.fusionengine = new Worker("/stockfish.js");
-        this.eval = ["0.0", "0.0"];
+        this.eval = ["0.0", "nil"];
         this.fen[0] = fen;
         this.fen[1] = vfen;
         this.depth = depth;
@@ -78,14 +78,28 @@ class Engine {
         }
     };
 
+    matchEngine(evaluation: string) {
+        switch (evaluation) {
+            case this.eval[0]:
+                return "s";
+            case this.eval[1]:
+                return "v";
+            default:
+                return "n";
+        }
+    }
+
     chooseAppropriateEval() {
-        if (!this.eval[1]) return this.eval[0];
+        console.debug(`SF15 eval: ${this.eval}`);
         if (this.eval[0] === "info" && this.eval[1] === "info") {
             // Both engines are thinking
-            return "0.0";
+            return "info";
         }
         
-        // Return the score with the strongest evaluation
+        if (this.eval[1] === "nil")
+            return this.eval[0];
+        
+        // Return the evaluation with the strongest score
         if (this.eval[0].startsWith("M") || this.eval[0].startsWith("0-") || this.eval[0].startsWith("1-")) {
             return this.eval[0];
         } else if (this.eval[1].startsWith("M") || this.eval[0].startsWith("0-") || this.eval[0].startsWith("1-")) {
@@ -129,6 +143,8 @@ class Engine {
 function Stockfish({ fen, vfen, depth }: { fen: string | null; vfen: string; depth: number }) {
     const stockfishRef = useRef<Engine | null>(null);
     const [evals, setEvals] = useState<string>("0.0");
+    const [bestMove, setBestMove] = useState<string>("⌀");
+    const [bestEngine, setBestEngine] = useState<string>("n")
     const [eData, setEdata] = useState<Array<string>>([]);
     const [heightDef, setHeightDef] = useState<number>(75);
 
@@ -169,6 +185,8 @@ function Stockfish({ fen, vfen, depth }: { fen: string | null; vfen: string; dep
         if (!eData.includes("Error: Unable to configure."))
             setEdata([]);
 
+        setBestMove("⌀");
+        
         // Run classical evaluation with Stockfish 15
         stockfish.engine.postMessage("uci");
         stockfish.engine.postMessage("ucinewgame");
@@ -179,14 +197,14 @@ function Stockfish({ fen, vfen, depth }: { fen: string | null; vfen: string; dep
         // then run an evaluation on the virtual board
         if (stockfish.fen[0] !== stockfish.fen[1]) {
             stockfish.fusionengine.postMessage("uci");
-            stockfish.fusionengine.postMessage("ucinewgane");
+            stockfish.fusionengine.postMessage("ucinewgame");
             stockfish.fusionengine.postMessage(`position fen ${stockfish.fen[1]}`);
             stockfish.fusionengine.postMessage(`go depth ${depth}`);
         }
-
+            
         // Use a debounce timeout to prevent the eval from updating rapidly
         let debounceTimeout: ReturnType<typeof setTimeout>;
-
+    
         const updateEval = (event: MessageEvent, type: string) => {
             setEdata((eData) => [
                 ...eData,
@@ -198,15 +216,14 @@ function Stockfish({ fen, vfen, depth }: { fen: string | null; vfen: string; dep
             ]);
             clearTimeout(debounceTimeout);
             debounceTimeout = setTimeout(() => {
-                // Check for changes in stockfish.eval
-                if (stockfish.eval[0] !== event.data) {
-                    // Do not set evals if the stockfish.eval value is 'info' meaning that there is no evaluation ready
-                    // This happens in higher depth analysis above 20, where it takes a lot of computing power to execute
-                    const evaluation = stockfish.chooseAppropriateEval();
-                    if (evaluation && evaluation !== "NaN") setEvals(evaluation);
-                    // Don't set the eval height if it is NaN, we cannot translate it and it usually only comes up when it is M0 (checkmate)
-                    if (!isNaN(stockfish.evalBarHeight)) setHeightDef(stockfish.evalBarHeight);
-                }
+                // Do not set evals if the stockfish.eval value is 'info' meaning that there is no evaluation ready
+                // This happens in higher depth analysis above 20, where it takes a lot of computing power to execute
+                const evaluation = stockfish.chooseAppropriateEval();
+                if (evaluation && evaluation !== "NaN" && evaluation !== "info") setEvals(evaluation);
+                // Don't set the eval height if it is NaN, we cannot translate it and it usually only comes up when it is M0 (checkmate)
+                if (!isNaN(stockfish.evalBarHeight)) setHeightDef(stockfish.evalBarHeight);
+                // Set best move by checking the successful eval and getting the move from the eData
+                setBestEngine(stockfish.matchEngine(evaluation));
             }, 500);
         };
         stockfish.engine.addEventListener("message", (e) => updateEval(e, "s"));
@@ -227,18 +244,13 @@ function Stockfish({ fen, vfen, depth }: { fen: string | null; vfen: string; dep
     useEffect(() => {
         if (window.innerWidth > 1270)
             dummy.current?.scrollIntoView({ behavior: "auto" });
-    }, [eData]);
-
-    function bestMove() {
-        if (eData && eData.length > 0) {
-            const lastLine = eData[eData.length - 1];
-            let bestMove = null;
-            if (lastLine.includes("bestmove")) {
-                bestMove = lastLine.split("bestmove ")[1].split(" ")[0];
+        if (bestEngine === "n") return;
+        for (const line of eData) {
+            if (line.includes("bestmove") && line.startsWith(`[${bestEngine}`)) {
+                setBestMove(line.split("bestmove ")[1].split(" ")[0]);
             }
-            return bestMove;
         }
-    }
+    }, [eData]);
 
     return (
         <>
@@ -301,8 +313,8 @@ function Stockfish({ fen, vfen, depth }: { fen: string | null; vfen: string; dep
                 <p className="title">Stockfish 15</p>
                 Classical analysis <br />
                 Current engine evaluation: {evals.startsWith("M") ? evals.replace("-", "") : evals} <br />
-                Top engine move: {bestMove() ?? "⌀"} <br />
-                Max depth=19 <br /> <br />
+                Top engine move: {bestMove} <br />
+                Max depth={depth} <br /> <br />
                 <div
                     style={{
                         fontFamily: "Lucida Console, sans-serif",

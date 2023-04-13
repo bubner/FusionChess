@@ -289,7 +289,7 @@ function App() {
                     )}
                 </p>
             </div>
-            <Stockfish fen={isGameStarted ? fen : null} vfen={isGameStarted ? game.positions[2] : null} depth={19} />
+            <Stockfish fen={isGameStarted ? fen : null} vfen={isGameStarted ? game.positions[2] : ""} depth={18} />
         </div>
     );
 }
