@@ -20,10 +20,10 @@ body {
     grid-template-columns: 20% 61% 20%;
     grid-template-rows: 45% 0.5fr 1fr;
     gap: 0px 0px;
-    grid-template-areas: 
-      "ll board u"
-      "mm board u"
-      "bb board u";
+    grid-template-areas:
+        "ll board u"
+        "mm board u"
+        "bb board u";
 }
 
 #stockfish {

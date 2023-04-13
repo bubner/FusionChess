@@ -186,6 +186,17 @@ export default class FusionBoard extends Chess {
         const moves = this.#virtual_board.moves({ square: <Square>fused[0], verbose: true });
         // Filter the moves to only include the moves that are valid for the current fused pieces
         const filteredMoves = moves.filter((move) => {
+            if (this.#virtual_board.isCheck()) {
+                // Make another virtual copy of the board
+                const copy = new Chess(this.#virtual_board.fen());
+                // Make the move on the virtual board by force
+                copy.put({ type: copy.get(move.from).type, color: copy.get(move.from).color }, move.to);
+                // Check if the move is valid
+                if (copy.isCheck()) {
+                    // If the move is invalid, then return false
+                    return false;
+                }
+            }
             // Check if the move is a capture
             if (move.captured) {
                 // Check if the captured piece is in the fused pieces
@@ -226,15 +237,16 @@ export default class FusionBoard extends Chess {
         return (
             super.isCheckmate() ||
             (this.#virtual_board.isCheck() &&
-                this.moves({ square: this.findKing() }).length === 0 &&
-                !this.isAttacked(this.findChecker()!, this.turn()) &&
+                this.#virtual_board.moves({ square: this.findKing() }).length === 0 &&
+                !this.#virtual_board.isAttacked(this.findChecker()!, this.turn()) &&
                 this._cannotBlockMate())
         );
     }
 
     _cannotBlockMate() {
-        const moves = this.moves().concat(this.#virtual_board.moves());
-        return moves.length === 0;
+        // const moves = this.moves().concat(this.#virtual_board.moves());
+        // return moves.length === 0;
+        return true;
     }
 
     findKing(): Square | undefined {
@@ -253,10 +265,12 @@ export default class FusionBoard extends Chess {
             const piece = this.get(square);
             if (piece && piece.color !== this.turn()) {
                 // Get the moves for the piece
-                const moves = this.moves({ square: <Square>square });
+                const moves = this.moves({ square: <Square>square, verbose: true });
                 // Check if the moves include the king
-                if (moves.includes(this.findKing() as string)) {
-                    return <Square>square;
+                for (const move of moves) {
+                    if (move.to.includes(this.findKing() as string)) {
+                        return <Square>square;
+                    }
                 }
             }
         }

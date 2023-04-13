@@ -246,7 +246,11 @@ function App() {
                 <br />
                 <button
                     id="start"
-                    style={{ border: "2px solid lightgreen", display: isGameStarted ? "none" : "revert", backgroundColor: "green" }}
+                    style={{
+                        border: "2px solid lightgreen",
+                        display: isGameStarted ? "none" : "revert",
+                        backgroundColor: "green",
+                    }}
                     onClick={start}
                 >
                     Start
@@ -289,7 +293,12 @@ function App() {
                     )}
                 </p>
             </div>
-            <Stockfish fen={isGameStarted ? fen : null} vfen={isGameStarted ? game.positions[2] : ""} depth={18} />
+            <Stockfish
+                fen={isGameStarted ? fen : null}
+                vfen={isGameStarted ? game.positions[2] : ""}
+                depth={18}
+                shouldRun={!game.isGameOver()}
+            />
         </div>
     );
 }
