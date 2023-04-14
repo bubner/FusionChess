@@ -11,7 +11,8 @@ function App() {
     const [fen, setFen] = useState(game.positions[0]);
     const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
     const [sounds, setSounds] = useState<HTMLAudioElement[]>([]);
-    const [squareAttributes, setSquareAttributes] = useState<{ [key: string]: { backgroundColor: string } }>({});
+    const [squareAttributes, setSquareAttributes] = useState<{ [key: string]: object }>({});
+    const [rightClicked, setRightClicked] = useState<{ [key: string]: object | undefined }>({});
     const [msgAlert, setMsgAlert] = useState("");
     const [boardWidth, setBoardWidth] = useState<number>(
         Math.max(400, Math.min(document.documentElement.clientHeight, document.documentElement.clientWidth) - 15)
@@ -53,8 +54,8 @@ function App() {
         if (Object.keys(fused).length === 0) return;
         for (const [square, type] of Object.entries(fused)) {
             const normsquare = game.get(square as Square);
-            if (normsquare.type === "n" && type === "q") {
-                
+            if ((normsquare.type === "n" && type === "q") || (normsquare.type === "q" && type === "n")) {
+                // Convert knight-queen into model
             }
         }
     }, [fen]);
@@ -74,6 +75,7 @@ function App() {
     function onDrop(sourceSquare: Square, targetSquare: Square) {
         // Don't move if the game is over
         if (game.isGameOver() || !isGameStarted) return false;
+        setRightClicked({});
         setIsClicked(null);
         try {
             const move = game.movePiece(sourceSquare, targetSquare);
@@ -111,6 +113,7 @@ function App() {
     }
 
     function onClick(square: Square) {
+        setRightClicked({});
         if (game.isGameOver() || !isGameStarted) return;
         onHover(square);
         if (isClicked && square !== isClicked) {
@@ -131,7 +134,7 @@ function App() {
             setSquareAttributes({
                 ...squareAttributes,
                 [square]: {
-                    backgroundColor: "rgba(0, 255, 0, 0.5)",
+                    backgroundColor: "rgba(255, 255, 64, 0.75)",
                 },
             });
         }
@@ -147,7 +150,11 @@ function App() {
             edits = {
                 ...edits,
                 [moves[i].to]: {
-                    backgroundColor: "rgba(255, 0, 0, 0.5)",
+                    background:
+                        game.get(moves[i].to) && game.get(moves[i].to).color !== game.get(square).color
+                            ? "radial-gradient(circle, rgba(0,0,0,.1) 85%, transparent 85%)"
+                            : "radial-gradient(circle, rgba(0,0,0,.1) 25%, transparent 25%)",
+                    borderRadius: "50%",
                 },
             };
         }
@@ -162,7 +169,12 @@ function App() {
                     edits = {
                         ...edits,
                         [moves[i].slice(-2)]: {
-                            backgroundColor: "rgba(255, 0, 0, 0.5)",
+                            background:
+                                game.get(moves[i].slice(-2) as Square) &&
+                                game.get(moves[i].slice(-2) as Square).color !== game.get(square).color
+                                    ? "radial-gradient(circle, rgba(0,0,0,.1) 85%, transparent 85%)"
+                                    : "radial-gradient(circle, rgba(0,0,0,.1) 25%, transparent 25%)",
+                            borderRadius: "50%",
                         },
                     };
                 }
@@ -170,6 +182,19 @@ function App() {
         }
         // Highlight squares by updating the styles board state
         setSquareAttributes(edits);
+    }
+
+    function onRightClick(square: Square) {
+        const colour = "rgba(255, 0, 0, 0.4)";
+        setRightClicked({
+            ...rightClicked,
+            [square]:
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
+                rightClicked[square] && rightClicked[square]!.backgroundColor === colour
+                    ? undefined
+                    : { backgroundColor: colour },
+        });
     }
 
     function onHoverLeave(square: Square) {
@@ -216,11 +241,12 @@ function App() {
                     position={fen}
                     onPieceDrop={onDrop}
                     onSquareClick={onClick}
+                    onSquareRightClick={onRightClick}
                     id="board"
                     boardWidth={boardWidth}
                     onMouseOverSquare={onHover}
                     onMouseOutSquare={onHoverLeave}
-                    customSquareStyles={squareAttributes}
+                    customSquareStyles={{ ...squareAttributes, ...rightClicked }}
                     customBoardStyle={{ borderRadius: "10px" }}
                 />
             </div>
