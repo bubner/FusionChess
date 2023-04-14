@@ -111,9 +111,9 @@ class Engine {
         const highest = Math.max(parseFloat(this.eval[0]), parseFloat(this.eval[1]));
 
         if (this.eval[0].startsWith("-") && this.eval[1].startsWith("-")) {
-            return String((highest + (highest + lowest)).toFixed(2));
+            return String((highest - (highest - lowest)).toFixed(2));
         } else {
-            return String((lowest + (lowest + highest)).toFixed(2));
+            return String((lowest - (lowest - highest)).toFixed(2));
         }
     }
 

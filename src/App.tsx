@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Square } from "chess.js/src/chess";
+import { Square, SQUARES } from "chess.js/src/chess";
 import FusionBoard from "./FusionBoard";
 import { Chessboard } from "react-chessboard";
 import Stockfish from "./Stockfish";
@@ -46,6 +46,19 @@ function App() {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
+    // Update models to reflect fused pieces
+    useEffect(() => {
+        if (!isGameStarted) return;
+        const fused = game.positions[1];
+        if (Object.keys(fused).length === 0) return;
+        for (const [square, type] of Object.entries(fused)) {
+            const normsquare = game.get(square as Square);
+            if (normsquare.type === "n" && type === "q") {
+                
+            }
+        }
+    }, [fen]);
+
     function importFen() {
         const fen = prompt("Enter FEN: ");
         if (fen == null) return;
@@ -69,16 +82,22 @@ function App() {
             }
             // Play sounds depending on the event
             if (game.isCheckmate()) {
+                // Checkmate
                 sounds[0].play();
             } else if (game.isCheck()) {
+                // Check
                 sounds[1].play();
             } else if (game.isDraw()) {
+                // Stalemate or draw
                 sounds[2].play();
             } else if (typeof move !== "boolean" && move?.captured) {
+                // Capture
                 sounds[3].play();
             } else if (move.san === "O-O" || move.san === "O-O-O") {
+                // Castling
                 sounds[4].play();
             } else {
+                // Normal move
                 sounds[5].play();
             }
             // Clear board from highlighting
@@ -202,6 +221,7 @@ function App() {
                     onMouseOverSquare={onHover}
                     onMouseOutSquare={onHoverLeave}
                     customSquareStyles={squareAttributes}
+                    customBoardStyle={{ borderRadius: "10px" }}
                 />
             </div>
             <div className="left">
