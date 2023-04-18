@@ -47,18 +47,24 @@ function App() {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    // Update models to reflect fused pieces
-    useEffect(() => {
-        if (!isGameStarted) return;
-        const fused = game.positions[1];
-        if (Object.keys(fused).length === 0) return;
-        for (const [square, type] of Object.entries(fused)) {
-            const normsquare = game.get(square as Square);
-            if ((normsquare.type === "n" && type === "q") || (normsquare.type === "q" && type === "n")) {
-                // Convert knight-queen into model
-            }
-        }
-    }, [fen]);
+    const pieces = ["wP", "wN", "wB", "wR", "wQ", "wK", "bP", "bN", "bB", "bR", "bQ", "bK"];
+    const customPieces = () => {
+        const returnPieces = {} as Record<typeof pieces[number], (props: { squareWidth: number }) => JSX.Element>;
+        pieces.map((p) => {
+            returnPieces[p] = ({ squareWidth }) => (
+                <div
+                    style={{
+                        width: squareWidth,
+                        height: squareWidth,
+                        backgroundImage: `url(/src/assets/pieces/standard/${p}.png)`,
+                        backgroundSize: "100%",
+                    }}
+                />
+            );
+            return null;
+        });
+        return returnPieces;
+    };
 
     function importFen() {
         const fen = prompt("Enter FEN: ");
@@ -248,6 +254,7 @@ function App() {
                     onMouseOutSquare={onHoverLeave}
                     customSquareStyles={{ ...squareAttributes, ...rightClicked }}
                     customBoardStyle={{ borderRadius: "10px" }}
+                    customPieces={customPieces()}
                 />
             </div>
             <div className="left">
