@@ -49,18 +49,21 @@ function App() {
 
     const pieces = ["wP", "wN", "wB", "wR", "wQ", "wK", "bP", "bN", "bB", "bR", "bQ", "bK"];
     const customPieces = () => {
-        const returnPieces = {} as Record<typeof pieces[number], (props: { squareWidth: number }) => JSX.Element>;
+        const returnPieces = {} as Record<(typeof pieces)[number], (props: { squareWidth: number }) => JSX.Element>;
         pieces.map((p) => {
-            returnPieces[p] = ({ squareWidth }) => (
-                <div
-                    style={{
-                        width: squareWidth,
-                        height: squareWidth,
-                        backgroundImage: `url(/src/assets/pieces/standard/${p}.png)`,
-                        backgroundSize: "100%",
-                    }}
-                />
-            );
+            returnPieces[p] = ({ squareWidth }) => {
+                return (
+                    <div
+                        style={{
+                            width: squareWidth,
+                            height: squareWidth,
+                            backgroundImage: `url(/src/assets/pieces/standard/${p}.png)`,
+                            backgroundSize: "100%",
+                            backgroundRepeat: "no-repeat",
+                        }}
+                    />
+                );
+            };
             return null;
         });
         return returnPieces;

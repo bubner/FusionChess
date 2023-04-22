@@ -98,7 +98,8 @@ class Engine {
             return "info";
         }
 
-        if (this.eval[1] === "nil") return this.eval[0];
+        if (this.eval[1] === "nil" || this.eval[1] === "info") return this.eval[0];
+        if (this.eval[0] === "info") return this.eval[1];
 
         // Return the evaluation with the strongest score
         if (this.eval[0].startsWith("M") || this.eval[0].startsWith("0-") || this.eval[0].startsWith("1-")) {
@@ -111,9 +112,14 @@ class Engine {
         const highest = Math.max(parseFloat(this.eval[0]), parseFloat(this.eval[1]));
 
         if (this.eval[0].startsWith("-") && this.eval[1].startsWith("-")) {
-            return String((highest - (highest - lowest)).toFixed(2));
+            // Both engines say black is winning
+            return String(lowest.toFixed(1));
+        } else if (!this.eval[0].startsWith("-") && !this.eval[1].startsWith("-")) {
+            // Both engines say white is winning
+            return String(highest.toFixed(1));
         } else {
-            return String((lowest - (lowest - highest)).toFixed(2));
+            // Engines conflict on who is winning, return a mashed result
+            return String((lowest - (lowest - highest)).toFixed(1));
         }
     }
 
