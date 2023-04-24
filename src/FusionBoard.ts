@@ -8,17 +8,12 @@ export default class FusionBoard extends Chess {
     // This allows us to use the same movePiece function and other functions that are already implemented
 
     #fused: Record<string, string>;
-    #fused_history: Array<Record<Square, string>>;
-    #history_capture: string[];
     #virtual_board: Chess;
 
     constructor() {
         super();
         // Initialise an empty fused board positions
         this.#fused = {};
-        // Initialise an empty fused board history
-        this.#fused_history = [];
-        this.#history_capture = [];
         // Initialise a virtual board to check for valid moves
         this.#virtual_board = new Chess();
     }
@@ -26,6 +21,7 @@ export default class FusionBoard extends Chess {
     movePiece(movefrom: Square, moveto: Square): Move | false {
         // Get the target square of the move
         const targetsquare = this.get(moveto);
+        const sourcesquare = this.get(movefrom);
         // Move on the primary board and return the result
         try {
             // Try on the virtual board first, as we might be missing info regarding check states
@@ -53,17 +49,17 @@ export default class FusionBoard extends Chess {
 
             // Check if the move was a capture, if so, get the type piece on that square
             if (targetsquare) {
-                // Was it a pawn takes pawn capture? Don't fuse pawns together
-                if (this.get(movefrom).type === "p" && targetsquare.type === "p") {
+                // Do not fuse pieces of the same type
+                if (sourcesquare.type === targetsquare.type) {
                     return move;
                 }
+                
                 // Check if the piece capturing is the king, we need to run special logic for that
                 if (this.get(movefrom).type === "k") {
                     // here be pirates, run some check detections here.
                     return move;
                 }
-                // Before fusing, update a history snapshot of the fused board
-                this.#history_capture = this.history();
+
                 // If it is already fused, then delete it from the fused board
                 if (this.#fused[moveto]) {
                     delete this.#fused[moveto];
@@ -71,6 +67,7 @@ export default class FusionBoard extends Chess {
                 if (this.#fused[movefrom]) {
                     delete this.#fused[movefrom];
                 }
+
                 // Add the captured piece to the fused board
                 this.#fused[moveto] = targetsquare.type;
             }
@@ -85,9 +82,6 @@ export default class FusionBoard extends Chess {
                     this.#fused[moveto] = piece;
                 }
             }
-
-            // Update history by deep copying the current fused board
-            this.#fused_history.push(JSON.parse(JSON.stringify(this.#fused)));
 
             // Return to the primary board after fusion procedure has completed
             return move;
@@ -138,7 +132,6 @@ export default class FusionBoard extends Chess {
     reset() {
         super.reset();
         this.#fused = {};
-        this.#fused_history = [];
     }
 
     undo() {
@@ -161,21 +154,6 @@ export default class FusionBoard extends Chess {
     history({ verbose = false }: { verbose?: boolean } = {}) {
         // Obtain history with a super method
         const history = super.history({ verbose });
-        if (history.length === 0) {
-            // Check if it was the first move
-            if (this.#fused_history.length === 0) {
-                return history;
-            }
-            // Otherwise a fusion has occurred, undo the last move
-            this.undo();
-            // Get the history of the board
-            const oldhistory = super.history({ verbose });
-            // Redo the last move
-            // this.move(history[history.length - 1]);
-            // Return the histories combined
-            return [...oldhistory, ...history];
-        }
-        // Standard move, continue as normal
         return history;
     }
 
@@ -244,9 +222,14 @@ export default class FusionBoard extends Chess {
     }
 
     _cannotBlockMate() {
-        // const moves = this.moves().concat(this.#virtual_board.moves());
-        // return moves.length === 0;
-        return true;
+        const king = this.findKing();
+        let moves;
+        if (this.isCheck()) {
+            moves = this.moves().concat(this.#virtual_board.moves({ square: king, verbose: false }));
+        } else {
+            moves = this.moves({ square: king, verbose: false }).concat(this.#virtual_board.moves());
+        }
+        return moves.length === 0;
     }
 
     findKing(): Square | undefined {

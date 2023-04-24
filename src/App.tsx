@@ -13,6 +13,7 @@ function App() {
     const [sounds, setSounds] = useState<HTMLAudioElement[]>([]);
     const [squareAttributes, setSquareAttributes] = useState<{ [key: string]: object }>({});
     const [rightClicked, setRightClicked] = useState<{ [key: string]: object | undefined }>({});
+    const [fusedDisplay, setFusedDisplay] = useState<{ [key: string]: object | undefined }>({});
     const [msgAlert, setMsgAlert] = useState("");
     const [boardWidth, setBoardWidth] = useState<number>(
         Math.max(400, Math.min(document.documentElement.clientHeight, document.documentElement.clientWidth) - 15)
@@ -240,6 +241,25 @@ function App() {
         } else {
             setMsgAlert("");
         }
+
+        // Handle fused pieces and their display on the board
+        const fused = Object.entries(game.positions[1]);
+        if (fused.length > 0) {
+            let edits = {};
+            for (let i = 0; i < fused.length; i++) {
+                const colour = game.get(fused[i][0] as Square).color;
+                edits = {
+                    ...edits,
+                    [fused[i][0]]: {
+                        backgroundImage: `url(/src/assets/pieces/standard/${colour}${fused[i][1].toUpperCase()}.png)`,
+                        backgroundSize: "contain",
+                        backgroundRepeat: "no-repeat",
+                        backgroundPosition: "left 25px center",
+                    },
+                };
+            }
+            setFusedDisplay(edits);
+        }
     }, [fen]);
 
     return (
@@ -255,7 +275,7 @@ function App() {
                     boardWidth={boardWidth}
                     onMouseOverSquare={onHover}
                     onMouseOutSquare={onHoverLeave}
-                    customSquareStyles={{ ...squareAttributes, ...rightClicked }}
+                    customSquareStyles={{ ...squareAttributes, ...rightClicked, ...fusedDisplay }}
                     customBoardStyle={{ borderRadius: "10px" }}
                     customPieces={customPieces()}
                 />
@@ -272,6 +292,7 @@ function App() {
                         setIsClicked(null);
                         setSquareAttributes({});
                         setIsGameStarted(false);
+                        setFusedDisplay({});
                     }}
                 >
                     Reset
