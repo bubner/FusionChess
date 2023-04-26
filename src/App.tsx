@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { Square, SQUARES } from "chess.js/src/chess";
-import FusionBoard from "./FusionBoard";
+import { Square, validateFen, SQUARES } from "chess.js/src/chess";
+import FusionBoard, { PIECES } from "./FusionBoard";
 import { Chessboard } from "react-chessboard";
 import Stockfish from "./Stockfish";
 import "./App.css";
@@ -70,16 +70,58 @@ function App() {
         return returnPieces;
     };
 
-    function importFen() {
-        const fen = prompt("Enter FEN: ");
-        if (fen == null) return;
+    function importGame() {
+        // Prompt user for custom Fusion Chess export string from exportGame()
+        const e_string = prompt("Enter valid Fusion Chess export string: ");
         try {
+            if (!e_string) return;
+
+            // Split string into their respective parts
+            const e = e_string.split(" ");
+            const fen = e_string[e_string.length - 1] === "," ? e.slice(0, e.length - 1).join(" ") : e_string;
+
+            // Check FEN if it is valid, extracting all parts apart from the last
+            const res = validateFen(fen);
+            if (!res.ok) throw new Error(res.error);
+
+            // Parse fused pieces
+            const fusedPieces = e_string[e_string.length - 1] === "," ? e[e.length - 1].split(",") : [];
+
+            // Format is in square=PIECE, check if the squares and pieces are valid
+            for (const piece of fusedPieces) {
+                if (!piece) continue;
+                const [square, pieceName] = piece.split("=");
+                if (!SQUARES.includes(square as Square) || !PIECES.includes(pieceName.toLowerCase()))
+                    throw new Error("Invalid Fusion Chess export string.");
+            }
+
+            // Set primary board FEN and force rerender
             game.load(fen);
-        } catch (e) {
-            alert("Invalid FEN!");
-            return;
+            setFen(fen);
+
+            // Set fused pieces state
+            if (fusedPieces.length > 0)
+                game.fused = fusedPieces;
+        } catch (err) {
+            alert(err);
         }
-        setFen(fen);
+    }
+
+    function exportGame() {
+        // Collect game state
+        const gameState = game.positions;
+
+        // Turn fused pieces into a comma seperated string
+        let fused = "";
+        for (const [square, piece] of Object.entries(gameState[1])) {
+            if (piece) fused += `${square}=${piece},`;
+        }
+
+        // Fuse together primary board fen and fused pieces
+        const exportString = `${gameState[0]} ${fused}`;
+        
+        navigator.clipboard.writeText(exportString);
+        alert(`Exported to clipboard: ${exportString}`);
     }
 
     function onDrop(sourceSquare: Square, targetSquare: Square) {
@@ -160,7 +202,7 @@ function App() {
             edits = {
                 ...edits,
                 [moves[i].to]: {
-                    background:
+                    backgroundImage:
                         game.get(moves[i].to) && game.get(moves[i].to).color !== game.get(square).color
                             ? "radial-gradient(circle, rgba(0,0,0,.1) 85%, transparent 85%)"
                             : "radial-gradient(circle, rgba(0,0,0,.1) 25%, transparent 25%)",
@@ -179,7 +221,7 @@ function App() {
                     edits = {
                         ...edits,
                         [moves[i].slice(-2)]: {
-                            background:
+                            backgroundImage:
                                 game.get(moves[i].slice(-2) as Square) &&
                                 game.get(moves[i].slice(-2) as Square).color !== game.get(square).color
                                     ? "radial-gradient(circle, rgba(0,0,0,.1) 85%, transparent 85%)"
@@ -275,7 +317,7 @@ function App() {
                     boardWidth={boardWidth}
                     onMouseOverSquare={onHover}
                     onMouseOutSquare={onHoverLeave}
-                    customSquareStyles={{ ...squareAttributes, ...rightClicked, ...fusedDisplay }}
+                    customSquareStyles={{ ...fusedDisplay, ...squareAttributes, ...rightClicked }}
                     customBoardStyle={{ borderRadius: "10px" }}
                     customPieces={customPieces()}
                 />
@@ -308,16 +350,10 @@ function App() {
                     Undo
                 </button>
                 <br />
-                <button
-                    id="copy"
-                    onClick={() => {
-                        navigator.clipboard.writeText(fen);
-                        alert(`copied: ${fen}`);
-                    }}
-                >
-                    Copy
+                <button id="copy" onClick={exportGame}>
+                    Export
                 </button>
-                <button id="import" onClick={importFen}>
+                <button id="import" onClick={importGame}>
                     Import
                 </button>{" "}
                 <br />

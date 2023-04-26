@@ -53,12 +53,6 @@ export default class FusionBoard extends Chess {
                 if (sourcesquare.type === targetsquare.type) {
                     return move;
                 }
-                
-                // Check if the piece capturing is the king, we need to run special logic for that
-                if (this.get(movefrom).type === "k") {
-                    // here be pirates, run some check detections here.
-                    return move;
-                }
 
                 // If it is already fused, then delete it from the fused board
                 if (this.#fused[moveto]) {
@@ -127,6 +121,14 @@ export default class FusionBoard extends Chess {
     get positions(): [string, Record<string, string>, string] {
         this._updateVirtualBoard();
         return [this.fen(), this.#fused, this.#virtual_board.fen()];
+    }
+
+    set fused(fused: string[]) {
+        for (const piece of fused) {
+            if (!piece) continue;
+            const [square, pieceName] = piece.split("=");
+            this.#fused[square] = pieceName.toLowerCase();
+        }
     }
 
     reset() {
@@ -279,3 +281,12 @@ export default class FusionBoard extends Chess {
         return super.isGameOver() || this.isCheckmate() || this.isStalemate();
     }
 }
+
+export const PIECES = [
+    "p",
+    "n",
+    "b",
+    "r",
+    "q",
+    "k",
+];
