@@ -3,8 +3,25 @@
 }
 
 body {
-    overflow-x: hidden;
     background-color: #242424;
+}
+
+body, .scrollelement {
+    scrollbar-color: #36393f, #c4c4c4;
+}
+
+body::-webkit-scrollbar, .scrollelement::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+body::-webkit-scrollbar-track, .scrollelement::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+body::-webkit-scrollbar-thumb, .scrollelement::-webkit-scrollbar-thumb {
+    background-color: #36393f;
+    border-radius: 6px;
 }
 
 #bg {
@@ -17,7 +34,7 @@ body {
 .container {
     display: grid;
     grid-auto-columns: 1fr;
-    grid-template-columns: 20% 61% 20%;
+    grid-template-columns: 25% 75% 25%;
     grid-template-rows: 45% 0.5fr 1fr;
     gap: 0px 0px;
     grid-template-areas:

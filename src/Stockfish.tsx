@@ -327,6 +327,7 @@ function Stockfish({
                 Current engine evaluation: {evals.startsWith("M") ? evals.replace("-", "") : evals} <br />
                 Max depth={depth} <br /> <br />
                 <div
+                    className="scrollelement"
                     style={{
                         fontFamily: "Lucida Console, sans-serif",
                         border: "2px solid grey",
