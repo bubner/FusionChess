@@ -58,7 +58,7 @@ function App() {
                         style={{
                             width: squareWidth,
                             height: squareWidth,
-                            backgroundImage: `url(/src/assets/pieces/standard/${p}.png)`,
+                            backgroundImage: `url(/src/assets/pieces/${p}.png)`,
                             backgroundSize: "100%",
                             backgroundRepeat: "no-repeat",
                         }}
@@ -100,8 +100,7 @@ function App() {
             setFen(fen);
 
             // Set fused pieces state
-            if (fusedPieces.length > 0)
-                game.fused = fusedPieces;
+            if (fusedPieces.length > 0) game.fused = fusedPieces;
         } catch (err) {
             alert(err);
         }
@@ -119,7 +118,7 @@ function App() {
 
         // Fuse together primary board fen and fused pieces
         const exportString = `${gameState[0]} ${fused}`;
-        
+
         navigator.clipboard.writeText(exportString);
         alert(`Exported to clipboard: ${exportString}`);
     }
@@ -293,7 +292,7 @@ function App() {
                 edits = {
                     ...edits,
                     [fused[i][0]]: {
-                        backgroundImage: `url(/src/assets/pieces/standard/${colour}${fused[i][1].toUpperCase()}.png)`,
+                        backgroundImage: `url(/src/assets/pieces/${colour}${fused[i][1].toUpperCase()}.png)`,
                         backgroundSize: "contain",
                         backgroundRepeat: "no-repeat",
                         backgroundPosition: "left 25px center",

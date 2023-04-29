@@ -6,20 +6,24 @@ body {
     background-color: #242424;
 }
 
-body, .scrollelement {
+body,
+.scrollelement {
     scrollbar-color: #36393f, #c4c4c4;
 }
 
-body::-webkit-scrollbar, .scrollelement::-webkit-scrollbar {
+body::-webkit-scrollbar,
+.scrollelement::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
 
-body::-webkit-scrollbar-track, .scrollelement::-webkit-scrollbar-track {
+body::-webkit-scrollbar-track,
+.scrollelement::-webkit-scrollbar-track {
     background: transparent;
 }
 
-body::-webkit-scrollbar-thumb, .scrollelement::-webkit-scrollbar-thumb {
+body::-webkit-scrollbar-thumb,
+.scrollelement::-webkit-scrollbar-thumb {
     background-color: #36393f;
     border-radius: 6px;
 }
@@ -34,7 +38,7 @@ body::-webkit-scrollbar-thumb, .scrollelement::-webkit-scrollbar-thumb {
 .container {
     display: grid;
     grid-auto-columns: 1fr;
-    grid-template-columns: 25% 75% 25%;
+    grid-template-columns: 22% 110vh 20%;
     grid-template-rows: 45% 0.5fr 1fr;
     gap: 0px 0px;
     grid-template-areas:
@@ -48,7 +52,7 @@ body::-webkit-scrollbar-thumb, .scrollelement::-webkit-scrollbar-thumb {
     color: white;
 }
 
-/* if screen is less than 1270px, change grid so it is stacked on top of each other */
+/* If screen is less than 1270px, change grid so it is stacked on top of each other */
 @media screen and (max-width: 1270px) {
     .container {
         grid-template-columns: 100%;

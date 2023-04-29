@@ -4,7 +4,7 @@
  * Compatible with FEN strings only. Limitations include FusionChess's dual board nature.
  * @author Lucas Bubner, 2023
  */
-import { useEffect, useRef, useState, Fragment, createRef } from "react";
+import { useEffect, useRef, useState, Fragment } from "react";
 
 class Engine {
     engine: Worker;
@@ -257,13 +257,6 @@ function Stockfish({
         };
     }, [fen, depth]);
 
-    // Config dummy to always be in view
-    const dummy = createRef<HTMLDivElement>();
-
-    useEffect(() => {
-        if (window.innerWidth > 1270) dummy.current?.scrollIntoView({ behavior: "auto" });
-    }, [eData]);
-
     return (
         <>
             <div id="evalbar">
@@ -340,12 +333,11 @@ function Stockfish({
                         background: "#000",
                     }}
                 >
-                    {eData.map((d, i) => (
+                    {eData.reverse().map((d, i) => (
                         <Fragment key={i}>
                             {d} <br />
                         </Fragment>
                     ))}
-                    <div id="dummy" ref={dummy} />
                 </div>
             </div>
         </>
