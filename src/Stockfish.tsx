@@ -333,7 +333,7 @@ function Stockfish({
                         background: "#000",
                     }}
                 >
-                    {eData.reverse().map((d, i) => (
+                    {eData.map((d, i) => (
                         <Fragment key={i}>
                             {d} <br />
                         </Fragment>

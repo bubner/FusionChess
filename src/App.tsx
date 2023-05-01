@@ -87,6 +87,15 @@ function App() {
             // Parse fused pieces
             const fusedPieces = e_string[e_string.length - 1] === "," ? e[e.length - 1].split(",") : [];
 
+            // Check virtual FEN for validity
+            if (fusedPieces.length > 0) {
+                const virtualGame = new FusionBoard();
+                virtualGame.load(fen);
+                virtualGame.fused = fusedPieces;
+                const virtualRes = validateFen(virtualGame.positions[2]);
+                if (!virtualRes.ok) throw new Error(`virtual board :: ${virtualRes.error}`);
+            }
+
             // Format is in square=PIECE, check if the squares and pieces are valid
             for (const piece of fusedPieces) {
                 if (!piece) continue;

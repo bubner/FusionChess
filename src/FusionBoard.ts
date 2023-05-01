@@ -1,4 +1,4 @@
-import { Chess, Square, PieceSymbol, SQUARES, Move } from "chess.js/src/chess";
+import { Chess, Square, PieceSymbol, SQUARES, Move, Color } from "chess.js/src/chess";
 /**
  * Fusion chess board implementation
  * @author Lucas Bubner, 2023
@@ -8,12 +8,14 @@ export default class FusionBoard extends Chess {
     // This allows us to use the same movePiece function and other functions that are already implemented
 
     #fused: Record<string, string>;
+    #king_fused: Record<Color, string>;
     #virtual_board: Chess;
 
     constructor() {
         super();
         // Initialise an empty fused board positions
         this.#fused = {};
+        this.#king_fused = { w: "", b: "" };
         // Initialise a virtual board to check for valid moves
         this.#virtual_board = new Chess();
     }
@@ -24,23 +26,6 @@ export default class FusionBoard extends Chess {
         const sourcesquare = this.get(movefrom);
         // Move on the primary board and return the result
         try {
-            // Try on the virtual board first, as we might be missing info regarding check states
-            this._updateVirtualBoard();
-
-            // Try to move on the virtual board
-            try {
-                this.#virtual_board.move({
-                    from: movefrom,
-                    to: moveto,
-                    promotion: "q",
-                });
-            } catch (e) {
-                if (this.#virtual_board.get(movefrom).type === "k" && this.#virtual_board.isCheck() && this.isCheck()) {
-                    // Cancel if the move was illegal and it was a king movement as it was check
-                    return false;
-                }
-            }
-
             const move = this.move({
                 from: movefrom,
                 to: moveto,
@@ -51,6 +36,13 @@ export default class FusionBoard extends Chess {
             if (targetsquare) {
                 // Do not fuse pieces of the same type
                 if (sourcesquare.type === targetsquare.type) {
+                    return move;
+                }
+
+                // Special logic for king fusion, as we cannot replace the kings on the board
+                if (sourcesquare.type === "k") {
+                    // Assign special fusion to the king
+                    this.#king_fused[sourcesquare.color] = targetsquare.type;
                     return move;
                 }
 
@@ -89,6 +81,10 @@ export default class FusionBoard extends Chess {
                     to: moveto,
                     promotion: "q",
                 });
+                // Make sure we aren't blundering the king
+                if (this.#virtual_board.isCheck() || this.isCheck()) {
+                    return false;
+                }
                 // If the move is valid, then continue the move forcefully
                 if (move) {
                     const originalState = new Chess(this.fen());
@@ -179,9 +175,9 @@ export default class FusionBoard extends Chess {
                 const copy = new Chess(this.#virtual_board.fen());
                 // Make the move on the virtual board by force
                 copy.put({ type: copy.get(move.from).type, color: copy.get(move.from).color }, move.to);
-                // Check if the move is valid
+                // Check if the move is valid by determining if it puts the king in jeopardy
                 if (copy.isCheck()) {
-                    // If the move is invalid, then return false
+                    // If the move is invalid, then filter it out
                     return false;
                 }
             }
@@ -199,7 +195,7 @@ export default class FusionBoard extends Chess {
             // If the move is not a capture, then it is valid
             return true;
         });
-        // Return the filtered moves
+        // Return the filtered moves in UCI format
         return filteredMoves.map((move) => move.from + move.to);
     }
 
