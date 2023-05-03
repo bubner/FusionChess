@@ -232,6 +232,7 @@ function Stockfish({
                 ]);
             } else {
                 setEdata(["Game end condition reached.", "Stockfish 15 evaluation halted."]);
+                return;
             }
             clearTimeout(debounceTimeout);
             debounceTimeout = setTimeout(() => {

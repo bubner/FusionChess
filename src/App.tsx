@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { Square, validateFen, SQUARES } from "chess.js/src/chess";
 import FusionBoard, { PIECES } from "./FusionBoard";
 import { Chessboard } from "react-chessboard";
@@ -22,12 +22,12 @@ function App() {
     // Get all audio files and store them in a state array
     useMemo(() => {
         setSounds([
-            new Audio("./src/assets/checkmate.mp3"),
-            new Audio("./src/assets/check.mp3"),
-            new Audio("./src/assets/draw.mp3"),
-            new Audio("./src/assets/capture.mp3"),
-            new Audio("./src/assets/castle.mp3"),
-            new Audio("./src/assets/move.mp3"),
+            new Audio("/assets/checkmate.mp3"),
+            new Audio("/assets/check.mp3"),
+            new Audio("/assets/draw.mp3"),
+            new Audio("/assets/capture.mp3"),
+            new Audio("/assets/castle.mp3"),
+            new Audio("/assets/move.mp3"),
         ]);
         sounds.forEach((sound) => {
             sound.load();
@@ -58,7 +58,7 @@ function App() {
                         style={{
                             width: squareWidth,
                             height: squareWidth,
-                            backgroundImage: `url(/src/assets/pieces/${p}.png)`,
+                            backgroundImage: `url(/assets/pieces/${p}.png)`,
                             backgroundSize: "100%",
                             backgroundRepeat: "no-repeat",
                         }}
@@ -70,11 +70,21 @@ function App() {
         return returnPieces;
     };
 
+    function reset() {
+        game.reset();
+        setFen(game.fen());
+        setIsClicked(null);
+        setSquareAttributes({});
+        setIsGameStarted(false);
+        setFusedDisplay({});
+    }
+
     function importGame() {
         // Prompt user for custom Fusion Chess export string from exportGame()
         const e_string = prompt("Enter valid Fusion Chess export string: ");
         try {
             if (!e_string) return;
+            reset();
 
             // Split string into their respective parts
             const e = e_string.split(" ");
@@ -272,7 +282,7 @@ function App() {
     }
 
     function start() {
-        new Audio("./src/assets/start.mp3").play();
+        new Audio("/assets/start.mp3").play();
         setIsGameStarted(true);
     }
 
@@ -293,15 +303,18 @@ function App() {
         }
 
         // Handle fused pieces and their display on the board
-        const fused = Object.entries(game.positions[1]);
+        const fused = Object.entries(game.positions[1]).concat(Object.entries(game.positions[3]));
         if (fused.length > 0) {
             let edits = {};
             for (let i = 0; i < fused.length; i++) {
+                // King will be represented as a colour not a piece
+                if (fused[i][0] === "wK" || fused[i][0] === "bK") {
+                }
                 const colour = game.get(fused[i][0] as Square).color;
                 edits = {
                     ...edits,
                     [fused[i][0]]: {
-                        backgroundImage: `url(/src/assets/pieces/${colour}${fused[i][1].toUpperCase()}.png)`,
+                        backgroundImage: `url(/assets/pieces/${colour}${fused[i][1].toUpperCase()}.png)`,
                         backgroundSize: "contain",
                         backgroundRepeat: "no-repeat",
                         backgroundPosition: "left 25px center",
@@ -337,12 +350,7 @@ function App() {
                     id="reset"
                     onClick={() => {
                         if (!window.confirm("Confirm reset?")) return;
-                        game.reset();
-                        setFen(game.fen());
-                        setIsClicked(null);
-                        setSquareAttributes({});
-                        setIsGameStarted(false);
-                        setFusedDisplay({});
+                        reset();
                     }}
                 >
                     Reset
@@ -403,10 +411,10 @@ function App() {
                     {game.history().length > 0 ? (
                         game.history().map((move, index) => {
                             return (
-                                <>
+                                <Fragment key={index}>
                                     {index % 2 === 0 ? index / 2 + 1 + "." : null}
                                     {move}{" "}
-                                </>
+                                </Fragment>
                             );
                         })
                     ) : (
