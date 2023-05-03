@@ -211,7 +211,7 @@ function App() {
     }
 
     function onHover(square: Square) {
-        if (game.isGameOver() || isClicked || !isGameStarted) return;
+        if (isClicked || !isGameStarted) return;
         onHoverLeave(square);
         const moves = game.moves({ square: square, verbose: true });
         let edits = {};

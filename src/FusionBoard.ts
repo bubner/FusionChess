@@ -74,12 +74,13 @@ export default class FusionBoard extends Chess {
             }
 
             // Return to the primary board after fusion procedure has completed
+            this._updateVirtualBoard();
             return move;
         } catch (e) {
             // Try to move on the virtual board
             try {
                 // Make sure we aren't blundering the king
-                if (this.#virtual_board.isCheck() || this.isCheck()) {
+                if (this.isCheck()) {
                     return false;
                 }
                 const move = this.#virtual_board.move({
@@ -115,6 +116,7 @@ export default class FusionBoard extends Chess {
                         }
                     }
                 }
+                this._updateVirtualBoard();
                 return move;
             } catch (e) {
                 // If the move is still invalid, then return false
@@ -130,7 +132,6 @@ export default class FusionBoard extends Chess {
      * 3: Pieces fused at the king's position
      */
     get positions(): [string, Record<string, string>, string, Record<Color, string>] {
-        this._updateVirtualBoard();
         return [this.fen(), this.#fused, this.#virtual_board.fen(), this.#king_fused];
     }
 
@@ -197,9 +198,13 @@ export default class FusionBoard extends Chess {
     _willJeopardiseKing(algebraic: string): boolean;
     _willJeopardiseKing(move: string, moveto: string): boolean;
     _willJeopardiseKing(move: string, moveto?: string): boolean {
+        if (this.fen() === this.#virtual_board.fen()) {
+            // Optimisation: if both fens are the same then super.moves() will already have filtered out any jeopardising moves
+            return false;
+        }
         try {
             // Ensure both boards escape check states before moving
-            if (this.isCheck() || this.#virtual_board.isCheck()) {
+            if (this.isCheck()) {
                 const copy = new Chess(this.fen());
                 copy.move(moveto ? { from: move, to: moveto, promotion: "q" } : move);
                 if (copy.isCheck()) {
@@ -218,7 +223,6 @@ export default class FusionBoard extends Chess {
     }
 
     getFusedMoves(fused: Array<string>, hovering: string): string[] {
-        this._updateVirtualBoard();
         // console.log("current state of the virtual board\n", this.#virtual_board.ascii());
         // Get the moves for the current fused pieces
         const moves = this.#virtual_board.moves({ square: fused[0] as Square, verbose: true });
@@ -261,27 +265,22 @@ export default class FusionBoard extends Chess {
     }
 
     isCheckmate() {
-        this._updateVirtualBoard();
-        return (this.#virtual_board.isCheck() || this.isCheck()) && this.moves({ verbose: false }).length === 0;
+        return this.isCheck() && this.moves({ verbose: false }).length === 0;
     }
 
     isStalemate() {
-        this._updateVirtualBoard();
-        return (!this.#virtual_board.isCheck() || !this.isCheck()) && this.moves({ verbose: false }).length === 0;
+        return !this.isCheck() && this.moves({ verbose: false }).length === 0;
     }
 
     isCheck() {
-        this._updateVirtualBoard();
         return super.isCheck() || this.#virtual_board.isCheck();
     }
 
     isDraw() {
-        this._updateVirtualBoard();
         return super.isDraw() || this.isStalemate();
     }
 
     isGameOver() {
-        this._updateVirtualBoard();
         return super.isGameOver() || this.isCheckmate() || this.isDraw();
     }
 
