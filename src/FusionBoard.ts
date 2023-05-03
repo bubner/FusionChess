@@ -197,7 +197,6 @@ export default class FusionBoard extends Chess {
     _willJeopardiseKing(algebraic: string): boolean;
     _willJeopardiseKing(move: string, moveto: string): boolean;
     _willJeopardiseKing(move: string, moveto?: string): boolean {
-        this._updateVirtualBoard();
         try {
             // Ensure both boards escape check states before moving
             if (this.isCheck() || this.#virtual_board.isCheck()) {
@@ -248,12 +247,16 @@ export default class FusionBoard extends Chess {
 
     private _updateVirtualBoard() {
         // Update the virtual board to reflect the current fused pieces
-        this.#virtual_board.load(this.fen());
-        for (const [square, piece] of Object.entries(this.#fused)) {
-            this.#virtual_board.put(
-                { type: piece as PieceSymbol, color: this.get(square as Square).color },
-                square as Square
-            );
+        try {
+            this.#virtual_board.load(this.fen());
+            for (const [square, piece] of Object.entries(this.#fused)) {
+                this.#virtual_board.put(
+                    { type: piece as PieceSymbol, color: this.get(square as Square).color },
+                    square as Square
+                );
+            }
+        } catch (e) {
+            console.error("Error updating virtual board", e);
         }
     }
 

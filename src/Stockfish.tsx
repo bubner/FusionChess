@@ -169,25 +169,40 @@ function Stockfish({
     useEffect(() => {
         if (!fen) {
             setEdata(["Setting up Stockfish 15..."]);
-            const reqs = [new XMLHttpRequest(), new XMLHttpRequest()];
+            const reqs = [new XMLHttpRequest(), new XMLHttpRequest(), new XMLHttpRequest()];
             reqs[0].open("HEAD", "/stockfish.js", false);
             reqs[1].open("HEAD", "/stockfish.wasm", false);
+            reqs[2].open("HEAD", document.location.pathname, false);
             reqs.forEach((req) => req.send());
 
+            const headers = reqs[2].getAllResponseHeaders();
+            const noHeaders = !headers.includes("cross-origin-embedder-policy:") || !headers.includes("cross-origin-opener-policy:");
+
             if (reqs[0].status === 404) {
-                setEdata((eData) => [...eData, "Could not find stockfish.js file."]);
+                setEdata((eData) => [...eData, "E: Could not find stockfish.js file."]);
             } else {
                 setEdata((eData) => [...eData, "Found stockfish.js."]);
             }
 
             if (reqs[1].status === 404) {
-                setEdata((eData) => [...eData, "Could not find WebAssembly binary."]);
+                setEdata((eData) => [...eData, "E: Could not find WebAssembly binary."]);
             } else {
                 setEdata((eData) => [...eData, "Found WebAssembly binary."]);
             }
 
-            if (reqs[0].status === 404 || reqs[1].status === 404) {
-                setEdata((eData) => [...eData, "Error: Unable to configure."]);
+            if (noHeaders) {
+                if (!headers.includes("cross-origin-embedder-policy:")) {
+                    setEdata((eData) => [...eData, "E: Cross-Origin-Embedder-Policy HTTP header is not set to 'require-corp'."]);
+                }
+                if (!headers.includes("cross-origin-opener-policy:")) {
+                    setEdata((eData) => [...eData, "E: Cross-Origin-Opener-Policy HTTP header is not set to 'same-origin'."]);
+                } 
+            } else {
+                setEdata((eData) => [...eData, "Cross-origin isolation is enabled."]);
+            }
+
+            if (reqs[0].status === 404 || reqs[1].status === 404 || noHeaders) {
+                setEdata((eData) => [...eData, "Configuration has failed."]);
                 setEvals("⌀");
             } else {
                 setEdata((eData) => [...eData, "Stockfish 15 is ready."]);
@@ -198,9 +213,16 @@ function Stockfish({
             return;
         }
 
-        const stockfish = stockfishRef.current ?? new Engine(fen, vfen, depth);
+        
         // Clear edata array for next evaluation
-        if (!eData.includes("Error: Unable to configure.")) setEdata([]);
+        if (!eData.includes("Configuration has failed.")) {
+            setEdata([]);
+        } else {
+            // Exit if we can't use Stockfish
+            return;
+        }
+
+        const stockfish = stockfishRef.current ?? new Engine(fen, vfen, depth);
 
         // Run classical evaluation with Stockfish 15
         stockfish.engine.postMessage("uci");
@@ -317,7 +339,7 @@ function Stockfish({
             </div>
             <div id="stockfish" style={{ textAlign: "center" }}>
                 <p className="title">Stockfish 15</p>
-                Status: {evals === "⌀" ? "INACTIVE" : fen ? "ACTIVE" : "STANDBY"} <br />
+                Status: {evals === "⌀" ? "UNAVAILABLE" : fen ? "ACTIVE" : "STANDBY"} <br />
                 Current engine evaluation: {evals.startsWith("M") ? evals.replace("-", "") : evals} <br />
                 Max depth={depth} <br /> <br />
                 <div
