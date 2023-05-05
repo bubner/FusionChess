@@ -1,13 +1,7 @@
 {
-    "rewrites": [
-        {
-            "source": "/(.*)",
-            "destination": "/index.html"
-        }
-    ],
     "headers": [
         {
-            "source": "/stockfish.js",
+            "source": "/(.*)",
             "headers": [
                 {
                     "key": "Cross-Origin-Opener-Policy",
