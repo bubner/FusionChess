@@ -25,9 +25,34 @@ export default class FusionBoard extends Chess {
         const targetsquare = this.get(moveto);
         const sourcesquare = this.get(movefrom);
         this._updateVirtualBoard();
+        const vTargetSquare = this.#virtual_board.get(moveto);
+        const vSourceSquare = this.#virtual_board.get(movefrom);
         if (this._willJeopardiseKing(movefrom, moveto)) {
             return false;
         }
+
+        const updateMovement = () => {
+            // Update movement of any pieces that have been fused
+            for (const [square, piece] of Object.entries(this.#fused)) {
+                // Check if the piece is on the same square as the move
+                if (square === movefrom) {
+                    // Remove the piece from the fused board
+                    delete this.#fused[square];
+                    // Add the piece to the new square
+                    this.#fused[moveto] = piece;
+                }
+            }
+            this._updateVirtualBoard();
+        };
+
+        const sourcePieceIs = (identifier: string) => {
+            return sourcesquare.type === identifier || vSourceSquare.type === identifier;
+        };
+
+        const targetPieceIs = (identifier: string) => {
+            return targetsquare.type === identifier || vTargetSquare.type === identifier;
+        };
+
         // Move on the primary board and return the result
         try {
             const move = this.move({
@@ -38,9 +63,30 @@ export default class FusionBoard extends Chess {
 
             // Check if the move was a capture, if so, get the type piece on that square
             if (targetsquare) {
-                // Do not fuse pieces of the same type
-                if (sourcesquare.type === targetsquare.type) {
+                // Do not fuse pieces of the same type or movement
+                if (
+                    sourcesquare.type === targetsquare.type || vSourceSquare.type === vTargetSquare.type ||
+                    sourcePieceIs("q") && (targetPieceIs("r") || targetPieceIs("b") || targetPieceIs("p"))
+                ) {
+                    updateMovement();
                     return move;
+                }
+
+                // Special fusion on rook and bishop
+                if (sourcePieceIs("r") && targetPieceIs("b") || sourcePieceIs("b") && targetPieceIs("r")) {
+                    // Remove fusion
+                    delete this.#fused[movefrom];
+                    delete this.#fused[moveto];
+                    // Undo the move as we need to make it a queen first
+                    this.undo();
+                    // Replace source square with queen
+                    this.put({ type: "q", color: sourcesquare.color }, movefrom);
+                    // Make the move again
+                    return this.move({
+                        from: movefrom,
+                        to: moveto,
+                        promotion: "q",
+                    });
                 }
 
                 // Special logic for king fusion, as we cannot replace the kings on the board
@@ -59,23 +105,13 @@ export default class FusionBoard extends Chess {
                     delete this.#fused[movefrom];
                 }
 
+                updateMovement();
                 // Add the captured piece to the fused board
                 this.#fused[moveto] = targetsquare.type;
             }
 
-            // Update movement of any pieces that have been fused
-            for (const [square, piece] of Object.entries(this.#fused)) {
-                // Check if the piece is on the same square as the move
-                if (square === movefrom) {
-                    // Remove the piece from the fused board
-                    delete this.#fused[square];
-                    // Add the piece to the new square
-                    this.#fused[moveto] = piece;
-                }
-            }
-
             // Return to the primary board after fusion procedure has completed
-            this._updateVirtualBoard();
+            updateMovement();
             return move;
         } catch (e) {
             try {
