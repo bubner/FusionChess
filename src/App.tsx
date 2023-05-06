@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, Fragment } from "react";
-import { Square, validateFen, SQUARES } from "chess.js/src/chess";
+import { Square, validateFen, SQUARES, Color } from "chess.js/src/chess";
 import FusionBoard, { PIECES } from "./FusionBoard";
 import { Chessboard } from "react-chessboard";
 import Stockfish from "./Stockfish";
@@ -110,8 +110,16 @@ function App() {
             for (const piece of fusedPieces) {
                 if (!piece) continue;
                 const [square, pieceName] = piece.split("=");
-                if (!SQUARES.includes(square as Square) || !PIECES.includes(pieceName.toLowerCase()))
+                if (!SQUARES.includes(square as Square) || !PIECES.includes(pieceName.toLowerCase())) {
+                    if (square === "bK" || square === "wK") continue;
                     throw new Error("Invalid Fusion Chess export string.");
+                }
+            }
+
+            // Set king fused pieces state
+            if (fusedPieces.length > 0) {
+                const kingFused = fusedPieces.filter((piece) => piece.includes("K"));
+                if (kingFused.length > 0) game.king_fused = kingFused;
             }
 
             // Set primary board FEN and force rerender
@@ -131,7 +139,7 @@ function App() {
 
         // Turn fused pieces into a comma seperated string
         let fused = "";
-        for (const [square, piece] of Object.entries(gameState[1])) {
+        for (const [square, piece] of Object.entries({ ...gameState[1], ...gameState[3] })) {
             if (piece) fused += `${square}=${piece},`;
         }
 
@@ -153,10 +161,10 @@ function App() {
                 return false;
             }
             // Play sounds depending on the event
-            if (game.isCheckmate()) {
+            if (game.isInCheckmate()) {
                 // Checkmate
                 sounds[0].play();
-            } else if (game.isCheck()) {
+            } else if (game.isInCheck()) {
                 // Check
                 sounds[1].play();
             } else if (game.isDraw()) {
@@ -174,7 +182,7 @@ function App() {
             }
             // Clear board from highlighting
             setSquareAttributes({});
-        } catch (Error) {
+        } catch (e) {
             return false;
         }
         // Trigger a re-render by updating fen state, as updating object will not trigger it
@@ -212,7 +220,6 @@ function App() {
 
     function onHover(square: Square) {
         if (isClicked || !isGameStarted) return;
-        onHoverLeave(square);
         const moves = game.moves({ square: square, verbose: true });
         let edits = {};
         for (let i = 0; i < moves.length; i++) {
@@ -229,7 +236,16 @@ function App() {
             };
         }
         // Check if the current square has a fused piece on it
-        const fused = Object.entries(game.positions[1]).find((piece) => piece[0] === square);
+        let fused = Object.entries(game.positions[1]).find((piece) => piece[0] === square);
+        const fusedKings = Object.entries(game.positions[3]);
+        for (let i = 0; i < fusedKings.length; i++) {
+            if (fusedKings[i][0][0] === (game.turn() === "w" ? "b" : "w")) continue;
+            if (fused) {
+                fused.concat([game.findKing(fusedKings[i][0][0] as Color), fusedKings[i][1]]);
+            } else {
+                fused = [game.findKing(fusedKings[i][0][0] as Color), fusedKings[i][1]];
+            }
+        }
         if (fused) {
             // If it does, highlight the additional moves of the fused piece
             const moves = game.getFusedMoves(fused, square);
@@ -261,7 +277,7 @@ function App() {
             [square]:
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore
-                rightClicked[square] && rightClicked[square]!.backgroundColor === colour
+                rightClicked[square] && rightClicked[square].backgroundColor === colour
                     ? undefined
                     : { backgroundColor: colour },
         });
@@ -288,7 +304,7 @@ function App() {
 
     useEffect(() => {
         // Handle game conditions
-        if (game.isCheckmate()) {
+        if (game.isInCheckmate()) {
             setMsgAlert("Checkmate!");
         } else if (game.isStalemate()) {
             setMsgAlert("Draw! Stalemate!");
@@ -296,7 +312,7 @@ function App() {
             setMsgAlert("Draw! Threefold Repetition!");
         } else if (game.isInsufficientMaterial()) {
             setMsgAlert("Draw! Insufficient Material!");
-        } else if (game.isCheck()) {
+        } else if (game.isInCheck()) {
             setMsgAlert("Check!");
         } else {
             setMsgAlert("");
@@ -309,6 +325,15 @@ function App() {
             for (let i = 0; i < fused.length; i++) {
                 // King will be represented as a colour not a piece
                 if (fused[i][0] === "wK" || fused[i][0] === "bK") {
+                    edits = {
+                        ...edits,
+                        [game.findKing(fused[i][0][0] as Color)]: {
+                            backgroundImage: `url(/assets/pieces/${fused[i][0][0]}${fused[i][1].toUpperCase()}.png)`,
+                            backgroundSize: "contain",
+                            backgroundRepeat: "no-repeat",
+                            backgroundPosition: "left 25px center",
+                        },
+                    };
                 }
                 const colour = game.get(fused[i][0] as Square).color;
                 edits = {
@@ -394,15 +419,25 @@ function App() {
                     {game.positions[1] && Object.keys(game.positions[1]).length > 0 ? (
                         Object.entries(game.positions[1]).map((position, index) => {
                             return (
-                                <>
+                                <Fragment key={index}>
                                     {index + 1}. {position.slice(0, 1)}={position.slice(-1).toString().substring(1)}
                                     {position.slice(-1).toString().substring(0, 1).toUpperCase()}{" "}
-                                </>
+                                </Fragment>
                             );
                         })
                     ) : (
-                        <>No pieces have been fused.</>
+                        <>No standard pieces have been fused.</>
                     )}
+                    {game.positions[3] &&
+                        Object.keys(game.positions[3]).length > 0 &&
+                        Object.entries(game.positions[3]).map((position, index) => {
+                            return (
+                                <Fragment key={index}>
+                                    <br />
+                                    {position.slice(0, 1)}={position.slice(-1)}
+                                </Fragment>
+                            );
+                        })}
                 </p>
             </div>
             <div className="bottom">
