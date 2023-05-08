@@ -65,15 +65,16 @@ export default class FusionBoard extends Chess {
             if (targetsquare) {
                 // Do not fuse pieces of the same type or movement
                 if (
-                    sourcesquare.type === targetsquare.type || vSourceSquare.type === vTargetSquare.type ||
-                    sourcePieceIs("q") && (targetPieceIs("r") || targetPieceIs("b") || targetPieceIs("p"))
+                    sourcesquare.type === targetsquare.type ||
+                    vSourceSquare.type === vTargetSquare.type ||
+                    (sourcePieceIs("q") && (targetPieceIs("r") || targetPieceIs("b") || targetPieceIs("p")))
                 ) {
                     updateMovement();
                     return move;
                 }
 
                 // Special fusion on rook and bishop
-                if (sourcePieceIs("r") && targetPieceIs("b") || sourcePieceIs("b") && targetPieceIs("r")) {
+                if ((sourcePieceIs("r") && targetPieceIs("b")) || (sourcePieceIs("b") && targetPieceIs("r"))) {
                     // Remove fusion
                     delete this.#fused[movefrom];
                     delete this.#fused[moveto];
@@ -164,7 +165,7 @@ export default class FusionBoard extends Chess {
 
                     return move;
                 } else {
-                    throw new Error("not a king movement");
+                    throw new SafeError("not a king movement");
                 }
             } catch (e) {
                 // Make sure we aren't blundering the king
@@ -301,24 +302,31 @@ export default class FusionBoard extends Chess {
     _willJeopardiseKing(move: string, moveto: string): boolean;
     _willJeopardiseKing(move: string, moveto?: string): boolean {
         try {
+            this._updateVirtualBoard();
             // Ensure both boards escape check states before moving
-            if (super.isCheck() || this.#virtual_board.isCheck()) {
-                this._updateVirtualBoard();
-                if (this.fen() === this.#virtual_board.fen()) {
-                    // Optimisation: if both fens are the same then super.moves() will already have filtered out any jeopardising moves
-                    return false;
-                }
-                const copy = new Chess(this.fen());
+            // bugged config with rnb5/pp1k3p/2p1r1p1/8/5n2/8/PPPPB1PP/RNBQK1NR w - - 0 13 f4=q,
+            if (this.fen() === this.#virtual_board.fen()) {
+                // Optimisation: if both fens are the same then super.moves() will already have filtered out any jeopardising moves
+                return false;
+            }
+
+            const copy = new Chess(this.fen());
+            try {
                 copy.move(moveto ? { from: move, to: moveto, promotion: "q" } : move);
                 if (copy.isCheck()) {
                     return true;
                 }
+                throw new SafeError("standard board is ok");
+            } catch (e) {
+                // Try the virtual board
                 copy.load(this.#virtual_board.fen());
                 copy.move(moveto ? { from: move, to: moveto, promotion: "q" } : move);
                 if (copy.isCheck()) {
                     return true;
                 }
-            } else if (this.isKingChecking(move, moveto)) {
+            }
+
+            if (this.isKingChecking(move, moveto)) {
                 return true;
             }
         } catch (e) {
@@ -496,3 +504,10 @@ export default class FusionBoard extends Chess {
 }
 
 export const PIECES = ["p", "n", "b", "r", "q", "k"];
+
+class SafeError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "SafeError";
+    }
+}
