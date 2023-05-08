@@ -91,6 +91,12 @@ export default class FusionBoard extends Chess {
 
                 // Special logic for king fusion, as we cannot replace the kings on the board
                 if (sourcesquare.type === "k") {
+                    // Do not fuse with pawns, and if we have a queen, don't fuse with anything
+                    // Knight-queen-king is not possible to obtain as it would be impossible to checkmate, and the virtual board cannot support two fusions.
+                    if (targetPieceIs("p") || this.#king_fused[sourcesquare.color + "K"] === "q") {
+                        updateMovement();
+                        return move;
+                    }
                     // Assign special fusion to the king
                     this.#king_fused[sourcesquare.color + "K"] = targetsquare.type;
                     delete this.#fused[moveto];
@@ -312,8 +318,7 @@ export default class FusionBoard extends Chess {
                 if (copy.isCheck()) {
                     return true;
                 }
-            }
-            if (this.isKingChecking(move, moveto)) {
+            } else if (this.isKingChecking(move, moveto)) {
                 return true;
             }
         } catch (e) {
@@ -323,7 +328,7 @@ export default class FusionBoard extends Chess {
     }
 
     isKingChecking(movefrom?: string, moveto?: string): boolean {
-        if (this.#king_fused[`${this.turn() === "w" ? "b" : "w"}K`]) {
+        if (this.#king_fused[`${this.turn() === "w" ? "b" : "w"}K`] && (this.turn() === "w" ? "b" : "w")) {
             // Make sure that the opponent's king is not in check
             const opponentking = this.findKing(this.turn() === "w" ? "b" : "w");
             const copy = new Chess(this.fen());
@@ -426,11 +431,11 @@ export default class FusionBoard extends Chess {
         }
     }
 
-    isStalemate() {
+    isInStalemate() {
         return !this.isInCheck() && this.moves({ verbose: false }).length === 0;
     }
 
-    // Cannot override isCheck and isCheckmate as it is used internally, causing a circular dependency
+    // Cannot override isCheck, isStalemate, isCheckmate as it is used internally, causing a circular dependency
     isInCheck() {
         return super.isCheck() || this.#virtual_board.isCheck() || this.isKingChecking();
     }

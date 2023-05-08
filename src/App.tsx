@@ -306,7 +306,7 @@ function App() {
         // Handle game conditions
         if (game.isInCheckmate()) {
             setMsgAlert("Checkmate!");
-        } else if (game.isStalemate()) {
+        } else if (game.isInStalemate()) {
             setMsgAlert("Draw! Stalemate!");
         } else if (game.isThreefoldRepetition()) {
             setMsgAlert("Draw! Threefold Repetition!");
