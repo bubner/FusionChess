@@ -10,6 +10,7 @@ class ChessBoard extends Chess {
         super(fen);
     }
 
+    // Scan the board for a colour's king square
     findKing(colour: Color): Square {
         for (const square of SQUARES) {
             const piece = this.get(square);
@@ -20,12 +21,27 @@ class ChessBoard extends Chess {
         throw new Error(`Unable to find ${colour} king.`);
     }
 
+    // Check if the king square is attacked by a colour
     kingBeingAttacked(colour: Color): boolean {
         return this.isAttacked(this.findKing(colour), colour === "w" ? "b" : "w");
     }
 
+    // Return inverse turn
     opponent() {
         return this.turn() === "w" ? "b" : "w";
+    }
+
+    // Get a UCI move (<source><target>) from a SAN move (<piece><square>)
+    convertSanToUci(fen: string, san: string): string {
+        const copy = new Chess(fen);
+        try {
+            copy.move(san);
+        } catch (e) {
+            throw new Error("SAN move is invalid.");
+        }
+        // Extract the move from the history
+        const move = copy.history({ verbose: true })[copy.history().length - 1];
+        return move.from + move.to;
     }
 }
 
@@ -339,15 +355,27 @@ export default class FusionBoard extends ChessBoard {
         // king fusion movement test: 8/ppK2k1p/6p1/2p5/3P4/8/PPP4P/RN4NR w - - 3 36 wK=r,
         // king fusion check test: rBb5/pp2k2p/6p1/2p5/8/3P4/PPP4P/RN2K1NR b - - 11 27 b8=n,wK=r,
 
-        // Use extended Chess class
-        const copy = new ChessBoard(this.#virtual_board.fen());
+        // Make a full copy of the Fusion Board
+        const copy = new FusionBoard();
+        copy.load(this.fen());
+        copy.#fused = this.#fused;
+        copy._updateVirtualBoard();
 
         try {
             // Check if the move will put the king in jeopardy
-            copy.move(moveto ? { from: move, to: moveto, promotion: "q" } : move);
+            if (!moveto) {
+                // Must be in SAN format, convert to UCI
+                const uci = copy.convertSanToUci(copy.fen(), move);
+                move = uci.slice(0, 2);
+                moveto = uci.slice(2, 4);
+            }
+
+            // move and moveto can only be of Square type now
+            copy.movePiece(move as Square, moveto as Square);
+            
             /* TODO: Bug here with king legal move test, this copy.move() throws an error and detects illegal moves
                but it cannot distinguish between virtual board and king illegal moves. */
-            if (copy.kingBeingAttacked(copy.opponent()) || this.isKingChecking(move, moveto)) {
+            if (copy.kingBeingAttacked(copy.opponent()) || copy.isKingChecking(move, moveto)) {
                 throw new SafeError("king is in jeopardy");
             }
         } catch (e) {
