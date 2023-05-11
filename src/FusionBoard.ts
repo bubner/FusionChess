@@ -10,6 +10,7 @@ class ChessBoard extends Chess {
         super(fen);
     }
 
+    // Check if the king square is attacked by a colour
     findKing(colour: Color): Square {
         for (const square of SQUARES) {
             const piece = this.get(square);
@@ -20,10 +21,12 @@ class ChessBoard extends Chess {
         throw new Error(`Unable to find ${colour} king.`);
     }
 
+    // Check if the king square is attacked by a colour
     kingBeingAttacked(colour: Color): boolean {
         return this.isAttacked(this.findKing(colour), colour === "w" ? "b" : "w");
     }
 
+    // Return inverse turn
     opponent() {
         return this.turn() === "w" ? "b" : "w";
     }
@@ -320,9 +323,9 @@ export default class FusionBoard extends ChessBoard {
                     return false;
                 }
             } else {
-                if (this._willJeopardiseKing(move as string)) {
-                    return false;
-                }
+                // SAN strings are not implemented because we cannot extract source square data easily, which is required
+                // for checking specific game states. This is because the SAN string does not contain the source square.
+                throw new Error("san strings are not currently implemented");
             }
             return true;
         });
@@ -330,9 +333,7 @@ export default class FusionBoard extends ChessBoard {
         return verbose ? (moves as Move[]) : (moves as string[]);
     }
 
-    _willJeopardiseKing(move: string): boolean;
-    _willJeopardiseKing(move: string, moveto: string): boolean;
-    _willJeopardiseKing(move: string, moveto?: string): boolean {
+    _willJeopardiseKing(move: string, moveto: string): boolean {
         this._updateVirtualBoard();
 
         // king legal move test: rnb5/pp1k3p/2p1r1p1/8/5n2/8/PPPPB1PP/RNBQK1NR w - - 0 13 f4=q,
@@ -343,11 +344,12 @@ export default class FusionBoard extends ChessBoard {
         const copy = new ChessBoard(this.#virtual_board.fen());
 
         try {
-            // Check if the move will put the king in jeopardy
-            copy.move(moveto ? { from: move, to: moveto, promotion: "q" } : move);
-            /* TODO: Bug here with king legal move test, this copy.move() throws an error and detects illegal moves
-               but it cannot distinguish between virtual board and king illegal moves. */
-            if (copy.kingBeingAttacked(copy.opponent()) || this.isKingChecking(move, moveto)) {
+            // Check if the move will put the king in jeopardy by forcing the move on the board
+            const target = copy.get(move as Square);
+            copy.remove(move as Square);
+            copy.put({ type: target.type, color: target.color }, moveto as Square);
+
+            if (copy.kingBeingAttacked(copy.turn()) || this.isKingChecking(move, moveto)) {
                 throw new SafeError("king is in jeopardy");
             }
         } catch (e) {
@@ -482,7 +484,7 @@ export default class FusionBoard extends ChessBoard {
     }
 
     isInStalemate() {
-        return !this.isInCheck() && this.moves({ verbose: false }).length === 0;
+        return !this.isInCheck() && this.moves({ verbose: true }).length === 0;
     }
 
     // Cannot override isCheck, isStalemate, isCheckmate as it is used internally, causing a circular dependency
@@ -491,7 +493,7 @@ export default class FusionBoard extends ChessBoard {
     }
 
     isInCheckmate() {
-        return this.isInCheck() && this.moves({ verbose: false }).length === 0;
+        return this.isInCheck() && this.moves({ verbose: true }).length === 0;
     }
 
     isDraw() {
