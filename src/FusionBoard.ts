@@ -336,9 +336,9 @@ export default class FusionBoard extends ChessBoard {
     _willJeopardiseKing(move: string, moveto: string): boolean {
         this._updateVirtualBoard();
 
-        // king legal move test: rnb5/pp1k3p/2p1r1p1/8/5n2/8/PPPPB1PP/RNBQK1NR w - - 0 13 f4=q,
-        // king fusion movement test: 8/ppK2k1p/6p1/2p5/3P4/8/PPP4P/RN4NR w - - 3 36 wK=r,
-        // king fusion check test: rBb5/pp2k2p/6p1/2p5/8/3P4/PPP4P/RN2K1NR b - - 11 27 b8=n,wK=r,
+        // PASS: king legal move test: rnb5/pp1k3p/2p1r1p1/8/5n2/8/PPPPB1PP/RNBQK1NR w - - 0 13 f4=q,
+        // PASS: king fusion movement test: 8/pp1K1k1p/6p1/2p5/3P4/8/PPP4P/RN4NR b - - 4 36 wK=r,
+        // PASS: king fusion check test: rBb5/pp2k2p/6p1/2p5/8/3P4/PPP4P/RN2K1NR b - - 11 27 b8=n,wK=r,
 
         // Use extended Chess class
         const copy = new ChessBoard(this.#virtual_board.fen());
@@ -353,7 +353,6 @@ export default class FusionBoard extends ChessBoard {
                 throw new SafeError("king is in jeopardy");
             }
         } catch (e) {
-            // Also check if it was a king movement originally as if the move was illegal then it will bypass the king check
             if (e instanceof SafeError) {
                 return true;
             }
@@ -469,18 +468,20 @@ export default class FusionBoard extends ChessBoard {
         }
     }
 
-    // Fix a copy board from complaining of a nonexistent king. This is a crappy solution but .move doesn't work without a king.
+    // Fix a copy board from complaining of a nonexistent king.
+    // This is an incredibly crappy solution but chess.move() doesn't work without a king.
+    // Lord forgive me for the lines I am about to write.
     private _fixMissingKing(copy: Chess) {
-        // Incredibly ugly solution, we need to put the king on the board to make a valid move so we're going to put it on a8
-        let target: Square = "a8";
-        copy.put({ type: "k", color: this.turn() }, target);
-
-        // If that doesn't work, put it somewhere until there is no checks and we can make any move we want
-        while (copy.isCheck() && !(this.isCheck() || this.#virtual_board.isCheck())) {
-            copy.remove(target);
-            target = SQUARES[Math.floor(Math.random() * SQUARES.length)];
-            copy.put({ type: "k", color: this.turn() }, target);
+        // We need to put the king on the board to make a valid move so we're going to put it on the closest empty safe square
+        for (const square of SQUARES) {
+            if (!copy.get(square) && !copy.isAttacked(square, copy.turn() === "w" ? "b" : "w")) {
+                copy.put({ type: "k", color: this.turn() }, square as Square);
+                return;
+            }
         }
+        // We'll have to settle for any square if they're all attacked for some reason. It should probably be check/stalemate at this point.
+        copy.put({ type: "k", color: this.turn() }, SQUARES[Math.floor(Math.random() * SQUARES.length)] as Square);
+        throw new Error("failed to find a safe square for king virtualisation");
     }
 
     isInStalemate() {
