@@ -219,7 +219,7 @@ function App() {
     }
 
     function onHover(square: Square) {
-        if (isClicked || !isGameStarted) return;
+        if (game.isGameOver() || isClicked || !isGameStarted) return;
         const moves = game.moves({ square: square, verbose: true });
         let edits = {};
         for (let i = 0; i < moves.length; i++) {
@@ -312,6 +312,8 @@ function App() {
             setMsgAlert("Draw! Threefold Repetition!");
         } else if (game.isInsufficientMaterial()) {
             setMsgAlert("Draw! Insufficient Material!");
+        } else if (game.isDraw()) {
+            setMsgAlert("Draw! 50-Move Rule!");
         } else if (game.isInCheck()) {
             setMsgAlert("Check!");
         } else {
@@ -323,6 +325,11 @@ function App() {
         if (fused.length > 0) {
             let edits = {};
             for (let i = 0; i < fused.length; i++) {
+                // Check if the fused piece is missing on the board as well
+                if (!fused[i][0][0]) {
+                    game.reportMissingFusedPiece(i);
+                    continue;
+                }
                 // King will be represented as a colour not a piece
                 if (fused[i][0] === "wK" || fused[i][0] === "bK") {
                     edits = {
@@ -349,6 +356,24 @@ function App() {
             setFusedDisplay(edits);
         }
     }, [fen]);
+
+    // Enable random moves to be played by the computer
+    // The available moves will be debugged to console, and these moves will pause intermitently
+    // useEffect(() => {
+    //     if (game.isGameOver()) return;
+    //     const allMoves = game.getEveryMove();
+    //     console.debug(allMoves);
+    //     if (allMoves.length === 0) return;
+    //     const randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+    //     onDrop(randomMove.slice(0, 2) as Square, randomMove.slice(-2) as Square);
+    // }, [fen]);
+
+    // Log every possible move to console
+    // useEffect(() => {
+    //     if (game.isGameOver()) return;
+    //     const allMoves = game.getEveryMove();
+    //     console.debug(allMoves);
+    // }, [fen]);
 
     return (
         <div className="container">
@@ -420,7 +445,7 @@ function App() {
                         Object.entries(game.positions[1]).map((position, index) => {
                             return (
                                 <Fragment key={index}>
-                                    {index + 1}. {position.slice(0, 1)}={position.slice(-1).toString().substring(1)}
+                                    {position.slice(0, 1)}={position.slice(-1).toString().substring(1)}
                                     {position.slice(-1).toString().substring(0, 1).toUpperCase()}{" "}
                                 </Fragment>
                             );
