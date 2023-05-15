@@ -69,7 +69,7 @@ class Engine {
             const choseneval = this.chooseAppropriateEval();
             if (choseneval.startsWith("M")) {
                 // Is checkmate in X, fill the whole bar depending on which side is winning
-                heightEval = choseneval.includes("-") && turn === "w" ? 100 : 0;
+                heightEval = (turn === "w" && !choseneval.includes("-")) || (turn === "b" && choseneval.includes("-")) ? 0 : 100;
             } else {
                 heightEval = choseneval.startsWith("-")
                     ? 50 + this._calcHeight(Math.abs(Number(choseneval)))

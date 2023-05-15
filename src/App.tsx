@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, Fragment } from "react";
-import { Square, validateFen, SQUARES, Color } from "chess.js/src/chess";
-import FusionBoard, { PIECES } from "./FusionBoard";
+import { useState, useEffect, useMemo, Fragment, useRef } from "react";
+import { Square, Color } from "chess.js/src/chess";
+import FusionBoard from "./FusionBoard";
 import { Chessboard } from "react-chessboard";
 import Stockfish from "./Stockfish";
 import "./App.css";
@@ -15,6 +15,7 @@ function App() {
     const [rightClicked, setRightClicked] = useState<{ [key: string]: object | undefined }>({});
     const [fusedDisplay, setFusedDisplay] = useState<{ [key: string]: object | undefined }>({});
     const [msgAlert, setMsgAlert] = useState("");
+    const timeoutRef = useRef<number | null>(null);
     const [boardWidth, setBoardWidth] = useState<number>(
         Math.max(400, Math.min(document.documentElement.clientHeight, document.documentElement.clientWidth) - 15)
     );
@@ -271,12 +272,12 @@ function App() {
 
         // Handle fused pieces and their display on the board
         const fused = Object.entries(game.positions[1]).concat(Object.entries(game.positions[3]));
+        let edits = {};
         if (fused.length > 0) {
-            let edits = {};
             for (let i = 0; i < fused.length; i++) {
                 // Check if the fused piece is missing on the board as well
                 const colour = game.get(fused[i][0] as Square).color;
-                if (!colour) {
+                if (!colour && fused[i][0] !== "wK" && fused[i][0] !== "bK") {
                     game.reportMissingFusedPiece(fused[i][0] as Square);
                     continue;
                 }
@@ -291,20 +292,36 @@ function App() {
                             backgroundPosition: "left 25px center",
                         },
                     };
+                } else {
+                    edits = {
+                        ...edits,
+                        [fused[i][0]]: {
+                            backgroundImage: `url(/assets/pieces/${colour}${fused[i][1].toUpperCase()}.png)`,
+                            backgroundSize: "contain",
+                            backgroundRepeat: "no-repeat",
+                            backgroundPosition: "left 25px center",
+                        },
+                    };
                 }
-                edits = {
-                    ...edits,
-                    [fused[i][0]]: {
-                        backgroundImage: `url(/assets/pieces/${colour}${fused[i][1].toUpperCase()}.png)`,
-                        backgroundSize: "contain",
-                        backgroundRepeat: "no-repeat",
-                        backgroundPosition: "left 25px center",
-                    },
-                };
             }
-            setFusedDisplay(edits);
         }
+        setFusedDisplay(edits);
     }, [fen]);
+
+    // Rate limit the rate an undo can be performed to prevent Stockfish from crashing the browser
+    const handleUndoClick = () => {
+        // Check if a timeout is already running
+        if (timeoutRef.current !== null) {
+            return;
+        }
+        // Set a timeout of 250ms before calling undoMove
+        timeoutRef.current = setTimeout(() => {
+            game.undoMove();
+            setFen(game.fen());
+            setIsClicked(null);
+            timeoutRef.current = null;
+        }, 250);
+    };
 
     // Enable random moves to be played by the computer
     // The available moves will be debugged to console, and these moves will pause intermitently
@@ -344,7 +361,12 @@ function App() {
             </div>
             <div className="left">
                 <h1 className="title">Fusion Chess</h1>
-                <h3 style={{ color: "white" }}>Lucas Bubner, 2023</h3>
+                <h3 style={{ color: "white" }}>
+                    <a style={{ color: "#4db2ff" }} href="https://github.com/hololb/" target="_blank" rel="noreferrer">
+                        Lucas Bubner
+                    </a>
+                    , 2023
+                </h3>
                 <button
                     id="reset"
                     onClick={() => {
@@ -354,14 +376,7 @@ function App() {
                 >
                     Reset
                 </button>
-                <button
-                    id="undo"
-                    onClick={() => {
-                        game.undoMove();
-                        setFen(game.fen());
-                        setIsClicked(null);
-                    }}
-                >
+                <button id="undo" onClick={handleUndoClick}>
                     Undo
                 </button>
                 <br />

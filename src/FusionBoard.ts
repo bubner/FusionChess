@@ -294,6 +294,7 @@ export default class FusionBoard extends ChessBoard {
     }
 
     set fused(fused: string[]) {
+        this.#fused = {};
         for (const piece of fused) {
             if (!piece) continue;
             const [square, pieceName] = piece.split("=");
@@ -644,13 +645,20 @@ export default class FusionBoard extends ChessBoard {
         const primarySquare = this.get(move.to);
         const virtualSquare = this.#virtual_board.get(move.to);
         const isAVirtualMove = primarySquare.type !== virtualSquare.type;
+        
+        let virtualType: PieceSymbol = virtualSquare.type;
+        if (primarySquare.type === "k" && this.#king_fused[`${move.color}K`]) {
+            // Virtual square will not be represented on the virtual board
+            // We need to get the virtual square from the king_fused record
+            virtualType = this.#king_fused[`${move.color}K`] as PieceSymbol;
+        }
 
         // If this is a stock move, we can use the normal SAN as it is not a fusion move
         if (!isAVirtualMove) return super.history({ verbose: true }).slice(-1)[0].san;
 
         // Otherwise, fuse the two pieces in the form <main piece><virtual piece><captured?><to><check?>
         // prettier-ignore
-        let fusionSAN = `${primarySquare.type.toUpperCase()}${virtualSquare.type.toUpperCase()}${move.captured ? "x" : ""}${move.to}`;
+        let fusionSAN = `${primarySquare.type.toUpperCase()}${virtualType.toUpperCase()}${move.captured ? "x" : ""}${move.to}`;
 
         // Add check or checkmate if applicable
         if (this.isInCheck()) {
@@ -713,7 +721,7 @@ export default class FusionBoard extends ChessBoard {
 
         // Set primary board FEN and fused pieces
         this.load(fen);
-        if (fusedPieces.length > 0) this.fused = fusedPieces;
+        this.fused = fusedPieces;
     }
 
     // _cannotBlockMate(king: Square) {
