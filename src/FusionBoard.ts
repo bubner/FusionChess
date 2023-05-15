@@ -540,7 +540,7 @@ export default class FusionBoard extends ChessBoard {
         for (const move of moves) {
             // Moves are in UCI format
             if (this._willJeopardiseKing(move.slice(0, 2), move.slice(2, 4))) {
-                // Remove the move from the list if it is in check (king fusion does not represent )
+                // Remove the move from the list if it is in check
                 moves.splice(moves.indexOf(move), 1);
             }
         }
