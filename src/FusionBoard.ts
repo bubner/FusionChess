@@ -1,4 +1,4 @@
-import { Chess, Square, PieceSymbol, Move, Color, SQUARES, DEFAULT_POSITION } from "chess.js/src/chess";
+import { Chess, Square, PieceSymbol, Move, Color, SQUARES, DEFAULT_POSITION, validateFen } from "chess.js/src/chess";
 
 /**
  * Function board with additional methods for board state analysis.
@@ -42,10 +42,12 @@ export default class FusionBoard extends ChessBoard {
 
     #fused: Record<string, string>;
     #king_fused: Record<string, string>;
+    #history: Array<Record<string, string>>;
     #virtual_board: Chess;
 
     constructor() {
         super(DEFAULT_POSITION);
+        this.#history = [];
         // Initialise an empty fused board positions
         this.#fused = {};
         this.#king_fused = {};
@@ -63,6 +65,16 @@ export default class FusionBoard extends ChessBoard {
         if (this._willJeopardiseKing(movefrom, moveto)) {
             return false;
         }
+
+        const updateHistory = (move: Move) => {
+            // Update history of all boards by appending this move to the history record
+            const ffen = this.export();
+            const fsan = this._convertToFusionSAN(move);
+            this.#history.push({
+                fsan,
+                ffen,
+            });
+        };
 
         const updateMovement = () => {
             // Update movement of any pieces that have been fused
@@ -111,6 +123,7 @@ export default class FusionBoard extends ChessBoard {
                     // Knight-queen-king is not possible to obtain as it would be impossible to checkmate, and the virtual board cannot support two fusions.
                     if (targetPieceIs("p") || this.#king_fused[sourcesquare.color + "K"] === "q") {
                         updateMovement();
+                        updateHistory(move);
                         return move;
                     }
 
@@ -126,6 +139,7 @@ export default class FusionBoard extends ChessBoard {
                     (sourcePieceIs("q") && (targetPieceIs("r") || targetPieceIs("b") || targetPieceIs("p")))
                 ) {
                     updateMovement();
+                    updateHistory(move);
                     return move;
                 }
 
@@ -152,6 +166,7 @@ export default class FusionBoard extends ChessBoard {
 
             // Return to the primary board after fusion procedure has completed
             updateMovement();
+            updateHistory(move);
             return move;
         } catch (e) {
             try {
@@ -198,6 +213,7 @@ export default class FusionBoard extends ChessBoard {
                     fenPieces[1] = fenPieces[1] === "w" ? "b" : "w";
                     this.load(fenPieces.join(" "));
 
+                    updateHistory(move);
                     return move;
                 } else {
                     throw new SafeError("not a king movement");
@@ -217,7 +233,7 @@ export default class FusionBoard extends ChessBoard {
                     (movefrom === "e1" && moveto === "g1") ||
                     (movefrom === "e1" && moveto === "c1") ||
                     (movefrom === "e8" && moveto === "g8") ||
-                    (movefrom === "e8" && moveto === "c8") && this.get(movefrom).type === "k"
+                    (movefrom === "e8" && moveto === "c8" && this.get(movefrom).type === "k")
                 ) {
                     return false;
                 }
@@ -261,6 +277,7 @@ export default class FusionBoard extends ChessBoard {
                     }
                 }
                 this._updateVirtualBoard();
+                updateHistory(move);
                 return move;
             }
         }
@@ -299,30 +316,30 @@ export default class FusionBoard extends ChessBoard {
         super.reset();
         this.#fused = {};
         this.#king_fused = {};
+        this.#history = [];
         this._updateVirtualBoard();
     }
 
-    undo() {
-        // Change the current state to the previous one in the history
-        const undoAction = super.undo();
-        if (!undoAction) return undoAction;
-        this._updateVirtualBoard();
+    // Choosing not to override the original method as it is not necessary
+    undoMove() {
+        // Remove last move from history
+        this.#history.pop();
 
-        // Undo any fused pieces that were attained in the previous move
-        // this.#fused_history.pop();
-        // this.#fused = this.#fused_history[-1];
+        // Reset the game if we run out of history
+        if (this.#history.length === 0) {
+            this.reset();
+            return;
+        }
 
-        return undoAction;
+        // Load the previous position
+        this.import(
+            // Remove any trailing whitespace from the fen and load it
+            this.#history[this.#history.length - 1].ffen.replace(/^\s+|\s+$/g, "")
+        );
     }
 
-    history(): string[];
-    history({ verbose }: { verbose: true }): (Move & { fen: string })[];
-    history({ verbose }: { verbose: false }): string[];
-    history({ verbose }: { verbose: boolean }): string[] | (Move & { fen: string })[];
-    history({ verbose = false }: { verbose?: boolean } = {}) {
-        // Obtain history from chess.ts
-        const history = super.history({ verbose });
-        return history;
+    getHistory(): Array<Record<string, string>> {
+        return this.#history;
     }
 
     moves(): string[];
@@ -551,8 +568,9 @@ export default class FusionBoard extends ChessBoard {
 
     // A fused piece might lose it's cohesion square in circumstances such as a king capture
     // or similar where there are multiple fused pieces. This function is called when a fused square is missing.
-    reportMissingFusedPiece(iterator: number) {
+    reportMissingFusedPiece(iterator: Square) {
         delete this.#fused[iterator];
+        this._updateVirtualBoard();
     }
 
     private _updateVirtualBoard() {
@@ -620,6 +638,82 @@ export default class FusionBoard extends ChessBoard {
 
     isAttacked(square: Square, colour: Color): boolean {
         return super.isAttacked(square, colour) || this.#virtual_board.isAttacked(square, colour);
+    }
+
+    private _convertToFusionSAN(move: Move): string {
+        const primarySquare = this.get(move.to);
+        const virtualSquare = this.#virtual_board.get(move.to);
+        const isAVirtualMove = primarySquare.type !== virtualSquare.type;
+
+        // If this is a stock move, we can use the normal SAN as it is not a fusion move
+        if (!isAVirtualMove) return super.history({ verbose: true }).slice(-1)[0].san;
+
+        // Otherwise, fuse the two pieces in the form <main piece><virtual piece><captured?><to><check?>
+        // prettier-ignore
+        let fusionSAN = `${primarySquare.type.toUpperCase()}${virtualSquare.type.toUpperCase()}${move.captured ? "x" : ""}${move.to}`;
+
+        // Add check or checkmate if applicable
+        if (this.isInCheck()) {
+            fusionSAN += this.isInCheckmate() ? "#" : "+";
+        }
+
+        return fusionSAN;
+    }
+
+    export() {
+        // Collect game state
+        const gameState = this.positions;
+
+        // Turn fused pieces into a comma seperated string
+        let fused = "";
+        for (const [square, piece] of Object.entries({ ...gameState[1], ...gameState[3] })) {
+            if (piece) fused += `${square}=${piece},`;
+        }
+
+        // Fuse together primary board fen and fused pieces
+        return `${gameState[0]} ${fused}`;
+    }
+
+    import(e_string: string) {
+        // Split string into their respective parts
+        const e = e_string.split(" ");
+        const fen = e_string[e_string.length - 1] === "," ? e.slice(0, e.length - 1).join(" ") : e_string;
+
+        // Check FEN if it is valid, extracting all parts apart from the last
+        const res = validateFen(fen);
+        if (!res.ok) throw new Error(res.error);
+
+        // Parse fused pieces
+        const fusedPieces = e_string[e_string.length - 1] === "," ? e[e.length - 1].split(",") : [];
+
+        // Check virtual FEN for validity
+        if (fusedPieces.length > 0) {
+            const virtualGame = new FusionBoard();
+            virtualGame.load(fen);
+            virtualGame.fused = fusedPieces;
+            const virtualRes = validateFen(virtualGame.positions[2]);
+            if (!virtualRes.ok) throw new Error(`virtual board :: ${virtualRes.error}`);
+        }
+
+        // Format is in square=PIECE, check if the squares and pieces are valid
+        for (const piece of fusedPieces) {
+            if (!piece) continue;
+            const [square, pieceName] = piece.split("=");
+            if (!SQUARES.includes(square as Square) || !PIECES.includes(pieceName.toLowerCase())) {
+                if (square === "bK" || square === "wK") continue;
+                throw new Error("Invalid Fusion Chess export string.");
+            }
+        }
+
+        // Set king fused pieces state
+        if (fusedPieces.length > 0) {
+            const kingFused = fusedPieces.filter((piece) => piece.includes("K"));
+            if (kingFused.length > 0) this.king_fused = kingFused;
+        }
+
+        // Set primary board FEN and fused pieces
+        this.load(fen);
+        if (fusedPieces.length > 0) this.fused = fusedPieces;
     }
 
     // _cannotBlockMate(king: Square) {

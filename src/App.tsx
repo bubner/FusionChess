@@ -85,67 +85,16 @@ function App() {
         try {
             if (!e_string) return;
             reset();
-
-            // Split string into their respective parts
-            const e = e_string.split(" ");
-            const fen = e_string[e_string.length - 1] === "," ? e.slice(0, e.length - 1).join(" ") : e_string;
-
-            // Check FEN if it is valid, extracting all parts apart from the last
-            const res = validateFen(fen);
-            if (!res.ok) throw new Error(res.error);
-
-            // Parse fused pieces
-            const fusedPieces = e_string[e_string.length - 1] === "," ? e[e.length - 1].split(",") : [];
-
-            // Check virtual FEN for validity
-            if (fusedPieces.length > 0) {
-                const virtualGame = new FusionBoard();
-                virtualGame.load(fen);
-                virtualGame.fused = fusedPieces;
-                const virtualRes = validateFen(virtualGame.positions[2]);
-                if (!virtualRes.ok) throw new Error(`virtual board :: ${virtualRes.error}`);
-            }
-
-            // Format is in square=PIECE, check if the squares and pieces are valid
-            for (const piece of fusedPieces) {
-                if (!piece) continue;
-                const [square, pieceName] = piece.split("=");
-                if (!SQUARES.includes(square as Square) || !PIECES.includes(pieceName.toLowerCase())) {
-                    if (square === "bK" || square === "wK") continue;
-                    throw new Error("Invalid Fusion Chess export string.");
-                }
-            }
-
-            // Set king fused pieces state
-            if (fusedPieces.length > 0) {
-                const kingFused = fusedPieces.filter((piece) => piece.includes("K"));
-                if (kingFused.length > 0) game.king_fused = kingFused;
-            }
-
-            // Set primary board FEN and force rerender
-            game.load(fen);
-            setFen(fen);
-
-            // Set fused pieces state
-            if (fusedPieces.length > 0) game.fused = fusedPieces;
+            game.import(e_string);
+            setFen(game.fen());
         } catch (err) {
             alert(err);
         }
     }
 
     function exportGame() {
-        // Collect game state
-        const gameState = game.positions;
-
-        // Turn fused pieces into a comma seperated string
-        let fused = "";
-        for (const [square, piece] of Object.entries({ ...gameState[1], ...gameState[3] })) {
-            if (piece) fused += `${square}=${piece},`;
-        }
-
-        // Fuse together primary board fen and fused pieces
-        const exportString = `${gameState[0]} ${fused}`;
-
+        // Export game to a string that can be imported later
+        const exportString = game.export();
         navigator.clipboard.writeText(exportString);
         alert(`Exported to clipboard: ${exportString}`);
     }
@@ -326,8 +275,9 @@ function App() {
             let edits = {};
             for (let i = 0; i < fused.length; i++) {
                 // Check if the fused piece is missing on the board as well
-                if (!fused[i][0][0]) {
-                    game.reportMissingFusedPiece(i);
+                const colour = game.get(fused[i][0] as Square).color;
+                if (!colour) {
+                    game.reportMissingFusedPiece(fused[i][0] as Square);
                     continue;
                 }
                 // King will be represented as a colour not a piece
@@ -342,7 +292,6 @@ function App() {
                         },
                     };
                 }
-                const colour = game.get(fused[i][0] as Square).color;
                 edits = {
                     ...edits,
                     [fused[i][0]]: {
@@ -408,7 +357,7 @@ function App() {
                 <button
                     id="undo"
                     onClick={() => {
-                        game.undo();
+                        game.undoMove();
                         setFen(game.fen());
                         setIsClicked(null);
                     }}
@@ -468,12 +417,12 @@ function App() {
             <div className="bottom">
                 <p className="title">History</p>
                 <p className="history">
-                    {game.history().length > 0 ? (
-                        game.history().map((move, index) => {
+                    {Object.entries(game.getHistory()).length > 0 ? (
+                        Object.entries(game.getHistory()).map((data, index) => {
                             return (
                                 <Fragment key={index}>
                                     {index % 2 === 0 ? index / 2 + 1 + "." : null}
-                                    {move}{" "}
+                                    {data[1].fsan}{" "}
                                 </Fragment>
                             );
                         })

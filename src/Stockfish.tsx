@@ -80,14 +80,13 @@ class Engine {
     };
 
     matchEngine(evaluation: string) {
-        // prettier-ignore
         switch (evaluation) {
-        case this.eval[0]:
-            return "s";
-        case this.eval[1]:
-            return "v";
-        default:
-            return "n";
+            case this.eval[0]:
+                return "s";
+            case this.eval[1]:
+                return "v";
+            default:
+                return "n";
         }
     }
 
@@ -176,7 +175,8 @@ function Stockfish({
             reqs.forEach((req) => req.send());
 
             const headers = reqs[2].getAllResponseHeaders();
-            const noHeaders = !headers.includes("cross-origin-embedder-policy:") || !headers.includes("cross-origin-opener-policy:");
+            const noHeaders =
+                !headers.includes("cross-origin-embedder-policy:") || !headers.includes("cross-origin-opener-policy:");
 
             if (reqs[0].status === 404) {
                 setEdata((eData) => [...eData, "E: Could not find stockfish.js file."]);
@@ -192,11 +192,17 @@ function Stockfish({
 
             if (noHeaders) {
                 if (!headers.includes("cross-origin-embedder-policy:")) {
-                    setEdata((eData) => [...eData, "E: Cross-Origin-Embedder-Policy HTTP header is not set to 'require-corp'."]);
+                    setEdata((eData) => [
+                        ...eData,
+                        "E: Cross-Origin-Embedder-Policy HTTP header is not set to 'require-corp'.",
+                    ]);
                 }
                 if (!headers.includes("cross-origin-opener-policy:")) {
-                    setEdata((eData) => [...eData, "E: Cross-Origin-Opener-Policy HTTP header is not set to 'same-origin'."]);
-                } 
+                    setEdata((eData) => [
+                        ...eData,
+                        "E: Cross-Origin-Opener-Policy HTTP header is not set to 'same-origin'.",
+                    ]);
+                }
             } else {
                 setEdata((eData) => [...eData, "Cross-origin isolation is enabled."]);
             }
@@ -213,7 +219,6 @@ function Stockfish({
             return;
         }
 
-        
         // Clear edata array for next evaluation
         if (!eData.includes("Configuration has failed.")) {
             setEdata([]);
