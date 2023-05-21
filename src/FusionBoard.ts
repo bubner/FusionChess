@@ -136,7 +136,7 @@ export default class FusionBoard extends ChessBoard {
                 if (
                     sourcesquare.type === targetsquare.type ||
                     vSourceSquare.type === vTargetSquare.type ||
-                    (sourcePieceIs("q") && (targetPieceIs("r") || targetPieceIs("b") || targetPieceIs("p")))
+                    (sourcePieceIs("q") && (targetPieceIs("r") || targetPieceIs("b") || targetPieceIs("p") && !targetPieceIs("n")))
                 ) {
                     updateMovement();
                     updateHistory(move);
