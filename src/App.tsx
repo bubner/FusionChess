@@ -114,12 +114,12 @@ function App() {
             if (game.isInCheckmate()) {
                 // Checkmate
                 sounds[0].play();
-            } else if (game.isInCheck()) {
-                // Check
-                sounds[1].play();
             } else if (game.isDraw()) {
                 // Stalemate or draw
                 sounds[2].play();
+            } else if (game.isInCheck()) {
+                // Check
+                sounds[1].play();
             } else if (typeof move !== "boolean" && move?.captured) {
                 // Capture
                 sounds[3].play();
@@ -255,17 +255,17 @@ function App() {
     useEffect(() => {
         // Handle game conditions
         if (game.isInCheckmate()) {
-            setMsgAlert("Checkmate!");
+            setMsgAlert("CHECKMATE");
         } else if (game.isInStalemate()) {
-            setMsgAlert("Draw! Stalemate!");
+            setMsgAlert("STALEMATE");
         } else if (game.isThreefoldRepetition()) {
-            setMsgAlert("Draw! Threefold Repetition!");
+            setMsgAlert("DRAW BY THREEFOLD REPETITION");
         } else if (game.isInsufficientMaterial()) {
-            setMsgAlert("Draw! Insufficient Material!");
+            setMsgAlert("DRAW BY INSUFFICIENT MATERIAL");
         } else if (game.isDraw()) {
-            setMsgAlert("Draw! 50-Move Rule!");
+            setMsgAlert("DRAW BY 50 MOVE RULE");
         } else if (game.isInCheck()) {
-            setMsgAlert("Check!");
+            setMsgAlert("CHECK");
         } else {
             setMsgAlert("");
         }

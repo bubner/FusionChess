@@ -134,7 +134,11 @@ export default class FusionBoard extends ChessBoard {
                     }
 
                     // Assign special fusion to the king
-                    this.#king_fused[sourcesquare.color + "K"] = targetsquare.type;
+                    this.#king_fused[sourcesquare.color + "K"] = pickStrongerPiece(
+                        targetsquare.type,
+                        vTargetSquare.type
+                    );
+                    updateHistory(move);
                     return move;
                 }
 
@@ -142,8 +146,7 @@ export default class FusionBoard extends ChessBoard {
                 if (
                     sourcesquare.type === targetsquare.type ||
                     vSourceSquare.type === vTargetSquare.type ||
-                    (sourcePieceIs("q") &&
-                        (targetPieceIs("r") || targetPieceIs("b") || (targetPieceIs("p") && !targetPieceIs("n"))))
+                    (sourcePieceIs("q") && (targetPieceIs("r") || targetPieceIs("b") || (targetPieceIs("p") && !targetPieceIs("n"))))
                 ) {
                     updateMovement();
                     updateHistory(move);
@@ -152,15 +155,17 @@ export default class FusionBoard extends ChessBoard {
 
                 // Special fusion on rook and bishop
                 if ((sourcePieceIs("r") && targetPieceIs("b")) || (sourcePieceIs("b") && targetPieceIs("r"))) {
+                    // Replace target square with queen
+                    this.put({ type: "q", color: sourcesquare.color }, moveto);
+
                     // Remove all original fusion on both squares
                     delete this.#fused[movefrom];
                     delete this.#fused[moveto];
 
-                    // Replace target square with queen
-                    this.put({ type: "q", color: sourcesquare.color }, moveto);
-
                     // I really don't know why this makes it work, but it does
                     this.load(this.fen());
+                    updateHistory(move);
+                    return move;
                 }
 
                 // Delete any original fusion
@@ -186,6 +191,13 @@ export default class FusionBoard extends ChessBoard {
                     }
 
                     const copy = new Chess(this.fen());
+                    // Test to see if the king is being xrayed
+                    copy.remove(movefrom);
+                    copy.put({ type: "k", color: sourcesquare.color }, moveto);
+                    if (copy.isAttacked(moveto, this.opponent())) {
+                        return false;
+                    }
+                    copy.load(this.fen());
                     // Force replace the king on the board
                     copy.remove(movefrom);
                     copy.put(
@@ -238,9 +250,10 @@ export default class FusionBoard extends ChessBoard {
                 // Check for castling, if we are trying to castle but it failed by the main board, then it has to be illegal.
                 if (
                     ((movefrom === "e1" && moveto === "g1") ||
-                    (movefrom === "e1" && moveto === "c1") ||
-                    (movefrom === "e8" && moveto === "g8") ||
-                    (movefrom === "e8" && moveto === "c8")) && this.get(movefrom).type === "k"
+                        (movefrom === "e1" && moveto === "c1") ||
+                        (movefrom === "e8" && moveto === "g8") ||
+                        (movefrom === "e8" && moveto === "c8")) &&
+                    this.get(movefrom).type === "k"
                 ) {
                     return false;
                 }
@@ -405,28 +418,34 @@ export default class FusionBoard extends ChessBoard {
         // Check for castling
         if (
             ((movefrom === "e1" && moveto === "g1") ||
-            (movefrom === "e1" && moveto === "c1") ||
-            (movefrom === "e8" && moveto === "g8") ||
-            (movefrom === "e8" && moveto === "c8")) && this.#virtual_board.get(movefrom).type === "k"
+                (movefrom === "e1" && moveto === "c1") ||
+                (movefrom === "e8" && moveto === "g8") ||
+                (movefrom === "e8" && moveto === "c8")) &&
+            this.#virtual_board.get(movefrom).type === "k"
         ) {
             if (this.isInCheck()) return true;
             copy.remove(movefrom as Square);
-            // Check if the king moves through check
+            let willFusedKingInterfere = false;
+            // Check if the king moves through check, and also check if a fused king is attacking castling squares
             switch (moveto) {
                 case "g1":
                     copy.put({ type: "k", color: "w" }, "f1");
+                    willFusedKingInterfere = this.isKingChecking(movefrom, "f1");
                     break;
                 case "g8":
                     copy.put({ type: "k", color: "b" }, "f8");
+                    willFusedKingInterfere = this.isKingChecking(movefrom, "f8");
                     break;
                 case "c1":
                     copy.put({ type: "k", color: "w" }, "d1");
+                    willFusedKingInterfere = this.isKingChecking(movefrom, "d1");
                     break;
                 case "c8":
                     copy.put({ type: "k", color: "b" }, "d8");
+                    willFusedKingInterfere = this.isKingChecking(movefrom, "d8");
                     break;
             }
-            return copy.isCheck();
+            return copy.isCheck() || willFusedKingInterfere || this.isKingChecking(movefrom, moveto);
         }
 
         try {
@@ -501,7 +520,16 @@ export default class FusionBoard extends ChessBoard {
         const swappedMoves = copy.moves({ square: king, verbose: true });
 
         // Filter the moves to only include the moves that are valid for the current fused pieces
+        const runningCopy = new Chess(this.fen());
         const filteredMoves = swappedMoves.filter((move) => {
+            // Move the king first in a simulation
+            runningCopy.remove(king as Square);
+            runningCopy.put({ type: "k", color: this.opponent() }, move.to as Square);
+            if (runningCopy.isAttacked(move.to, this.opponent())) {
+                return false;
+            } else {
+                runningCopy.load(this.fen());
+            }
             // Check if the square is endangered
             if (copy.isAttacked(move.to, copy.opponent())) {
                 return false;
@@ -562,11 +590,24 @@ export default class FusionBoard extends ChessBoard {
             ...kingFusion,
         ];
 
+        // Make a running copy of the board to validate standard moves
+        const copy = new Chess(this.fen());
+
+        // Moves are in UCI format
         for (const move of moves) {
-            // Moves are in UCI format
+            // Check if the move is valid on the standard board, as we are not using the standard board to check for moves
+            let res: Move | boolean;
+            try {
+                res = copy.move({ from: move.slice(0, 2), to: move.slice(2, 4) });
+            } catch (e) {
+                res = false;
+            }
+
             if (
+                // willJeopardiseKing will check all virtual board positions, ensuring we always return a fully evaluated board
                 this._willJeopardiseKing(move.slice(0, 2), move.slice(2, 4)) ||
-                this.isKingChecking(move.slice(0, 2), move.slice(2, 4))
+                this.isKingChecking(move.slice(0, 2), move.slice(2, 4)) ||
+                !res
             ) {
                 // Remove the move from the list if it is in check
                 moves.splice(moves.indexOf(move), 1);
@@ -607,10 +648,35 @@ export default class FusionBoard extends ChessBoard {
     private _fixMissingKing(copy: Chess) {
         // We need to put the king on the board to make a valid move so we're going to put it on the closest empty safe square
         // We invert the squares depending on the turn to avoid putting the king on the other side of the board
-        // This may not apply to endgames, and at worst case the king won't be able to do certain moves. However, I can't think of anything better.
+        // There is also a check to see if we pin ourselves by a nonexistent king, if so, we don't put the king on that square
         const boardSquares = this.turn() === "w" ? SQUARES.reverse() : SQUARES;
+
+        const pinningOurselves = (putking: Square) => {
+            // Yet Another Board Copy™
+            const clone = new Chess(this.fen());
+
+            // Put the king on the square we're testing
+            clone.remove(this.findKing(this.turn()));
+            clone.put({ type: "k", color: this.turn() }, putking);
+
+            // Remove every other piece from the board that is our colour
+            for (const square of SQUARES) {
+                const piece = clone.get(square);
+                if (piece && piece.color === this.turn() && piece.type !== "k") {
+                    clone.remove(square);
+                }
+            }
+
+            // Check if the king is in check, if so, we have pinned ourselves in some way
+            return clone.isCheck();
+        };
+
         for (const square of boardSquares) {
-            if (!copy.get(square) && !copy.isAttacked(square, copy.turn() === "w" ? "b" : "w")) {
+            if (
+                !copy.get(square) &&
+                !copy.isAttacked(square, copy.turn() === "w" ? "b" : "w") &&
+                !pinningOurselves(square)
+            ) {
                 copy.put({ type: "k", color: this.turn() }, square as Square);
                 return;
             }
@@ -626,7 +692,7 @@ export default class FusionBoard extends ChessBoard {
 
     // Cannot override isCheck, isStalemate, isCheckmate as it is used internally, causing a circular dependency
     isInCheck() {
-        return super.isCheck() || this.#virtual_board.isCheck() || this.isKingChecking();
+        return this.isCheck() || this.#virtual_board.isCheck() || this.isKingChecking();
     }
 
     isInCheckmate() {
@@ -724,9 +790,12 @@ export default class FusionBoard extends ChessBoard {
         }
 
         // Set king fused pieces state
+        this.#king_fused = {};
         if (fusedPieces.length > 0) {
             const kingFused = fusedPieces.filter((piece) => piece.includes("K"));
-            if (kingFused.length > 0) this.king_fused = kingFused;
+            for (const fusion of kingFused) {
+                this.#king_fused = { ...this.#king_fused, [fusion.slice(0, 2)]: fusion.slice(-1) };
+            }
         }
 
         // Set primary board FEN and fused pieces

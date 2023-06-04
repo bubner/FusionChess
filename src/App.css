@@ -121,6 +121,7 @@ body::-webkit-scrollbar-thumb,
 
 #alert {
     color: red;
+    font-weight: 800;
     font-size: 36px;
 }
 
