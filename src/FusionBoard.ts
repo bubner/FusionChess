@@ -91,11 +91,17 @@ export default class FusionBoard extends ChessBoard {
         };
 
         const sourcePieceIs = (identifier: string) => {
-            return sourcesquare.type === identifier || vSourceSquare.type === identifier;
+            return (
+                (sourcesquare.type === identifier || vSourceSquare.type === identifier) &&
+                pickStrongerPiece(vSourceSquare.type, sourcesquare.type) === identifier
+            );
         };
 
         const targetPieceIs = (identifier: string) => {
-            return targetsquare.type === identifier || vTargetSquare.type === identifier;
+            return (
+                (targetsquare.type === identifier || vTargetSquare.type === identifier) &&
+                pickStrongerPiece(vTargetSquare.type, targetsquare.type) === identifier
+            );
         };
 
         const pickStrongerPiece = (piece1: PieceSymbol, piece2: PieceSymbol) => {
@@ -136,7 +142,8 @@ export default class FusionBoard extends ChessBoard {
                 if (
                     sourcesquare.type === targetsquare.type ||
                     vSourceSquare.type === vTargetSquare.type ||
-                    (sourcePieceIs("q") && (targetPieceIs("r") || targetPieceIs("b") || targetPieceIs("p") && !targetPieceIs("n")))
+                    (sourcePieceIs("q") &&
+                        (targetPieceIs("r") || targetPieceIs("b") || (targetPieceIs("p") && !targetPieceIs("n"))))
                 ) {
                     updateMovement();
                     updateHistory(move);
@@ -230,10 +237,10 @@ export default class FusionBoard extends ChessBoard {
 
                 // Check for castling, if we are trying to castle but it failed by the main board, then it has to be illegal.
                 if (
-                    (movefrom === "e1" && moveto === "g1") ||
+                    ((movefrom === "e1" && moveto === "g1") ||
                     (movefrom === "e1" && moveto === "c1") ||
                     (movefrom === "e8" && moveto === "g8") ||
-                    (movefrom === "e8" && moveto === "c8" && this.get(movefrom).type === "k")
+                    (movefrom === "e8" && moveto === "c8")) && this.get(movefrom).type === "k"
                 ) {
                     return false;
                 }
@@ -397,10 +404,10 @@ export default class FusionBoard extends ChessBoard {
 
         // Check for castling
         if (
-            (movefrom === "e1" && moveto === "g1") ||
+            ((movefrom === "e1" && moveto === "g1") ||
             (movefrom === "e1" && moveto === "c1") ||
             (movefrom === "e8" && moveto === "g8") ||
-            (movefrom === "e8" && moveto === "c8" && this.#virtual_board.get(movefrom).type === "k")
+            (movefrom === "e8" && moveto === "c8")) && this.#virtual_board.get(movefrom).type === "k"
         ) {
             if (this.isInCheck()) return true;
             copy.remove(movefrom as Square);
@@ -557,7 +564,10 @@ export default class FusionBoard extends ChessBoard {
 
         for (const move of moves) {
             // Moves are in UCI format
-            if (this._willJeopardiseKing(move.slice(0, 2), move.slice(2, 4))) {
+            if (
+                this._willJeopardiseKing(move.slice(0, 2), move.slice(2, 4)) ||
+                this.isKingChecking(move.slice(0, 2), move.slice(2, 4))
+            ) {
                 // Remove the move from the list if it is in check
                 moves.splice(moves.indexOf(move), 1);
             }
@@ -645,7 +655,7 @@ export default class FusionBoard extends ChessBoard {
         const primarySquare = this.get(move.to);
         const virtualSquare = this.#virtual_board.get(move.to);
         const isAVirtualMove = primarySquare.type !== virtualSquare.type;
-        
+
         let virtualType: PieceSymbol = virtualSquare.type;
         if (primarySquare.type === "k" && this.#king_fused[`${move.color}K`]) {
             // Virtual square will not be represented on the virtual board
