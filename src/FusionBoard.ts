@@ -146,7 +146,7 @@ export default class FusionBoard extends ChessBoard {
                 if (
                     sourcesquare.type === targetsquare.type ||
                     vSourceSquare.type === vTargetSquare.type ||
-                    (sourcePieceIs("q") && (targetPieceIs("r") || targetPieceIs("b") || (targetPieceIs("p") && !targetPieceIs("n"))))
+                    (sourcePieceIs("q") && ((targetPieceIs("r") || targetPieceIs("b") || (targetPieceIs("p")) && !targetPieceIs("n"))))
                 ) {
                     updateMovement();
                     updateHistory(move);
@@ -173,7 +173,12 @@ export default class FusionBoard extends ChessBoard {
                 delete this.#fused[movefrom];
 
                 // Add the captured piece to the fused board
-                this.#fused[moveto] = pickStrongerPiece(targetsquare.type, vTargetSquare.type);
+                if (sourcePieceIs("q") && targetPieceIs("n")) {
+                    // Special case for queen-knight fusion. ensuring it always activates on knights only
+                    this.#fused[moveto] = targetsquare.type === "q" ? "q" : "n";
+                } else {
+                    this.#fused[moveto] = pickStrongerPiece(targetsquare.type, vTargetSquare.type);
+                }
             }
 
             // Return to the primary board after fusion procedure has completed
@@ -282,7 +287,9 @@ export default class FusionBoard extends ChessBoard {
                             // Remove the piece from the fused board
                             delete this.#fused[square];
                             // Add the piece to the new square
-                            this.#fused[moveto] = piece;
+                            let shouldFuse = pickStrongerPiece(piece as PieceSymbol, targetsquare.type);
+                            shouldFuse = pickStrongerPiece(shouldFuse, vTargetSquare.type);
+                            this.#fused[moveto] = shouldFuse;
                         } else if (square !== moveto) {
                             // For fused pieces that are not affected by this move, we need to
                             // update them back to their original state as they likely were mutated
