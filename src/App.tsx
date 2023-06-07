@@ -10,6 +10,7 @@ function App() {
     const [isClicked, setIsClicked] = useState<Square | null>(null);
     const [fen, setFen] = useState(game.positions[0]);
     const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
+    const [isStockfishOn, setIsStockfishOn] = useState<boolean>(true);
     const [sounds, setSounds] = useState<HTMLAudioElement[]>([]);
     const [squareAttributes, setSquareAttributes] = useState<{ [key: string]: object }>({});
     const [rightClicked, setRightClicked] = useState<{ [key: string]: object | undefined }>({});
@@ -376,16 +377,20 @@ function App() {
                 >
                     Reset
                 </button>
-                <button id="undo" onClick={handleUndoClick}>
+                <button onClick={handleUndoClick}>
                     Undo
                 </button>
                 <br />
-                <button id="copy" onClick={exportGame}>
+                <button onClick={exportGame}>
                     Export
                 </button>
-                <button id="import" onClick={importGame}>
+                <button onClick={importGame}>
                     Import
-                </button>{" "}
+                </button>
+                <br />
+                <button onClick={() => setIsStockfishOn(!isStockfishOn)}>
+                    Toggle Stockfish
+                </button>
                 <br />
                 <button
                     id="start"
@@ -446,12 +451,14 @@ function App() {
                     )}
                 </p>
             </div>
-            <Stockfish
-                fen={isGameStarted ? fen : null}
-                vfen={isGameStarted ? game.positions[2] : ""}
-                depth={18}
-                shouldRun={!game.isGameOver()}
-            />
+            {isStockfishOn &&
+                <Stockfish
+                    fen={isGameStarted ? fen : null}
+                    vfen={isGameStarted ? game.positions[2] : ""}
+                    depth={18}
+                    shouldRun={!game.isGameOver()}
+                />
+            }
         </div>
     );
 }
