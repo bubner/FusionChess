@@ -286,6 +286,11 @@ export default class FusionBoard extends ChessBoard {
                         if (square === movefrom) {
                             // Remove the piece from the fused board
                             delete this.#fused[square];
+                            if (sourcePieceIs("q") && (sourcesquare.type === "n" || vSourceSquare.type === "n")) {
+                                // Do not fuse queen-knight fusions
+                                this.#fused[moveto] = sourcesquare.type === "q" ? "q" : "n";
+                                continue;
+                            }
                             // Add the piece to the new square
                             let shouldFuse = pickStrongerPiece(piece as PieceSymbol, targetsquare.type);
                             shouldFuse = pickStrongerPiece(shouldFuse, vTargetSquare.type);
@@ -412,7 +417,7 @@ export default class FusionBoard extends ChessBoard {
         }
     }
 
-    _willJeopardiseKing(movefrom: string, moveto: string): boolean {
+    _willJeopardiseKing(movefrom: string, moveto: string, iteration: string | false = false): boolean {
         this._updateVirtualBoard();
 
         // PASS: king legal move test: rnb5/pp1k3p/2p1r1p1/8/5n2/8/PPPPB1PP/RNBQK1NR w - - 0 13 f4=q,
@@ -420,7 +425,9 @@ export default class FusionBoard extends ChessBoard {
         // PASS: king fusion check test: rBb5/pp2k2p/6p1/2p5/8/3P4/PPP4P/RN2K1NR b - - 11 27 b8=n,wK=r,
 
         // Use extended Chess class
-        const copy = new ChessBoard(this.#virtual_board.fen());
+        const copy = new ChessBoard(iteration ? iteration : this.#virtual_board.fen());
+        // Whenever we run this function, run it once again with recursion to ensure we have checked the normal board too
+        const recursiveAction = iteration ? false : this._willJeopardiseKing(movefrom, moveto, this.fen());
 
         // Check for castling
         if (
@@ -452,7 +459,7 @@ export default class FusionBoard extends ChessBoard {
                     willFusedKingInterfere = this.isKingChecking(movefrom, "d8");
                     break;
             }
-            return copy.isCheck() || willFusedKingInterfere || this.isKingChecking(movefrom, moveto);
+            return copy.isCheck() || willFusedKingInterfere || this.isKingChecking(movefrom, moveto) || recursiveAction;
         }
 
         try {
@@ -470,7 +477,7 @@ export default class FusionBoard extends ChessBoard {
             }
         }
 
-        return false;
+        return false || recursiveAction;
     }
 
     isKingChecking(movefrom?: string, moveto?: string): boolean {
@@ -591,38 +598,22 @@ export default class FusionBoard extends ChessBoard {
             kingFusion = this._getKingFusedMoves();
         }
 
+        // Congegrate all moves into one array
         const moves = [
             ...mainBoard.map((move) => move.from + move.to),
             ...virtualBoard.map((move) => move.from + move.to),
             ...kingFusion,
         ];
 
-        // Make a running copy of the board to validate standard moves
-        const copy = new Chess(this.fen());
-
         // Moves are in UCI format
-        for (const move of moves) {
-            // Check if the move is valid on the standard board, as we are not using the standard board to check for moves
-            let res: Move | boolean;
-            try {
-                res = copy.move({ from: move.slice(0, 2), to: move.slice(2, 4) });
-            } catch (e) {
-                res = false;
-            }
-
-            if (
-                // willJeopardiseKing will check all virtual board positions, ensuring we always return a fully evaluated board
+        const validMoves = moves.filter((move) => {
+            return !(
                 this._willJeopardiseKing(move.slice(0, 2), move.slice(2, 4)) ||
-                this.isKingChecking(move.slice(0, 2), move.slice(2, 4)) ||
-                !res
-            ) {
-                // Remove the move from the list if it is in check
-                moves.splice(moves.indexOf(move), 1);
-            }
-        }
+                this.isKingChecking(move.slice(0, 2), move.slice(2, 4))
+            );
+        });
 
-        // Convert all to UCI format and return them
-        return moves;
+        return validMoves;
     }
 
     // A fused piece might lose it's cohesion square in circumstances such as a king capture
