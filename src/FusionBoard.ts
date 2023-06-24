@@ -177,7 +177,9 @@ export default class FusionBoard extends ChessBoard {
                     // Special case for queen-knight fusion. ensuring it always activates on knights only
                     this.#fused[moveto] = targetsquare.type === "q" ? "q" : "n";
                 } else {
-                    this.#fused[moveto] = pickStrongerPiece(targetsquare.type, vTargetSquare.type);
+                    const chosenPiece = pickStrongerPiece(targetsquare.type, vTargetSquare.type);
+                    if (chosenPiece !== targetsquare.type)
+                        this.#fused[moveto] = chosenPiece;
                 }
             }
 
@@ -294,6 +296,9 @@ export default class FusionBoard extends ChessBoard {
                             // Add the piece to the new square
                             let shouldFuse = pickStrongerPiece(piece as PieceSymbol, targetsquare.type);
                             shouldFuse = pickStrongerPiece(shouldFuse, vTargetSquare.type);
+                            // Don't fuse pieces that are the same
+                            if (shouldFuse === targetsquare.type)
+                                continue;
                             this.#fused[moveto] = shouldFuse;
                         } else if (square !== moveto) {
                             // For fused pieces that are not affected by this move, we need to
@@ -728,7 +733,7 @@ export default class FusionBoard extends ChessBoard {
         }
 
         // If this is a stock move, we can use the normal SAN as it is not a fusion move
-        if (!isAVirtualMove) return super.history({ verbose: true }).slice(-1)[0].san;
+        if (!isAVirtualMove) return move.san;
 
         // Otherwise, fuse the two pieces in the form <main piece><virtual piece><captured?><to><check?>
         // prettier-ignore
