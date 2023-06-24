@@ -134,6 +134,7 @@ function App() {
             // Clear board from highlighting
             setSquareAttributes({});
         } catch (e) {
+            console.error(e);
             return false;
         }
         // Trigger a re-render by updating fen state, as updating object will not trigger it
