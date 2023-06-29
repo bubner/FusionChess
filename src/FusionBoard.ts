@@ -178,7 +178,6 @@ export default class FusionBoard extends ChessBoard {
                     this.#fused[moveto] = targetsquare.type === "q" ? "q" : "n";
                 } else {
                     const chosenPiece = pickStrongerPiece(targetsquare.type, vTargetSquare.type);
-                    console.log(chosenPiece);
                     if (chosenPiece !== sourcesquare.type)
                         this.#fused[moveto] = chosenPiece;
                 }
