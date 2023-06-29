@@ -178,7 +178,8 @@ export default class FusionBoard extends ChessBoard {
                     this.#fused[moveto] = targetsquare.type === "q" ? "q" : "n";
                 } else {
                     const chosenPiece = pickStrongerPiece(targetsquare.type, vTargetSquare.type);
-                    if (chosenPiece !== targetsquare.type)
+                    console.log(chosenPiece);
+                    if (chosenPiece !== sourcesquare.type)
                         this.#fused[moveto] = chosenPiece;
                 }
             }
@@ -297,7 +298,7 @@ export default class FusionBoard extends ChessBoard {
                             let shouldFuse = pickStrongerPiece(piece as PieceSymbol, targetsquare.type);
                             shouldFuse = pickStrongerPiece(shouldFuse, vTargetSquare.type);
                             // Don't fuse pieces that are the same
-                            if (shouldFuse === targetsquare.type)
+                            if (shouldFuse === sourcesquare.type)
                                 continue;
                             this.#fused[moveto] = shouldFuse;
                         } else if (square !== moveto) {
