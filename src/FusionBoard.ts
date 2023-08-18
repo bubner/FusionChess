@@ -297,7 +297,7 @@ export default class FusionBoard extends ChessBoard {
                             let shouldFuse = pickStrongerPiece(piece as PieceSymbol, targetsquare.type);
                             shouldFuse = pickStrongerPiece(shouldFuse, vTargetSquare.type);
                             // Don't fuse pieces that are the same
-                            if (shouldFuse === sourcesquare.type)
+                            if (shouldFuse === vSourceSquare.type)
                                 continue;
                             this.#fused[moveto] = shouldFuse;
                         } else if (square !== moveto) {

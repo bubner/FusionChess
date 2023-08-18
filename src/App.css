@@ -39,7 +39,7 @@ body::-webkit-scrollbar-thumb,
     display: grid;
     grid-auto-columns: 1fr;
     grid-template-columns: 22% 110vh 20%;
-    grid-template-rows: 45% 0.5fr 1fr;
+    grid-template-rows: 50% 0.5fr 1fr;
     gap: 0px 0px;
     grid-template-areas:
         "ll board u"
@@ -79,6 +79,7 @@ body::-webkit-scrollbar-thumb,
 
 .left {
     text-align: center;
+    z-index: 10;
     grid-area: ll;
 }
 
