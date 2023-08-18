@@ -1,4 +1,5 @@
 # Fusion Chess
+![Fusion Chess](https://raw.githubusercontent.com/hololb/FusionChess/prod/public/fchess.png)
 ###### Built in React and TypeScript as a school project.
 
 ## How it is played
