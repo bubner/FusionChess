@@ -364,7 +364,7 @@ function App() {
             <div className="left">
                 <h1 className="title">Fusion Chess</h1>
                 <h3 style={{ color: "white" }}>
-                    <a style={{ color: "#4db2ff" }} href="https://github.com/hololb/" target="_blank" rel="noreferrer">
+                    <a style={{ color: "#4db2ff" }} href="https://github.com/bubner/" target="_blank" rel="noreferrer">
                         Lucas Bubner
                     </a>
                     , 2023

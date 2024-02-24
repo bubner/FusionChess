@@ -1,7 +1,7 @@
 # Fusion Chess
 ###### Built in React and TypeScript as a school project. <br> Licensed under MIT, using libraries [chess.js](https://github.com/jhlywa/chess.js), [react-chessboard](https://github.com/Clariity/react-chessboard), [stockfish.js](https://github.com/nmrugg/stockfish.js).
 
-<img src="https://raw.githubusercontent.com/hololb/FusionChess/prod/public/fchess.png" alt="Fusion Chess" height="200"></img> <br>
+<img src="https://raw.githubusercontent.com/bubner/FusionChess/prod/public/fchess.png" alt="Fusion Chess" height="200"></img> <br>
 https://fusionchess.vercel.app/
 
 ## How it is played
